@@ -133,7 +133,7 @@ function HouseholdView({ data }) {
     <>
       <section className="section-card">
         <SectionHeading
-          title="What the exemption is worth for one young worker"
+          title="Exemption value for a single worker"
           description={`Employer NICs saved on a ${age}-year-old employee by gross salary, and the worker's exact net gain if the saving were fully passed through as wages. With ${formatPct(data.settings.pass_through_scenarios[0] * 100, 0)} pass-through the worker line is flat at zero and the employer keeps the saving.`}
         />
         {switches}
@@ -250,14 +250,14 @@ function StaticView({ data }) {
       <div className="pt-2">
         <SectionHeading
           size="lg"
-          title="The policy — what switches off, and for whom"
+          title="The proposed reform"
           description={`Employers currently pay NICs at ${rate} on each employee's earnings above the Secondary Threshold (${formatCurrency(params.secondary_threshold_annual)}/year). The reform switches that charge off for all employees aged 18-24 on earnings up to the Upper Secondary Threshold (${formatCurrency(params.upper_secondary_threshold_annual)}/year) — the same design as the existing zero rates for under-21s and apprentices under 25, extended to the whole age group. Nothing changes for the worker's own NICs or take-home pay; the saving goes to the employer.`}
         />
       </div>
 
       <section className="section-card">
         <SectionHeading
-          title="What changes, group by group"
+          title="Treatment by employee group"
           description="The bold row is the only change; every other group keeps its current treatment."
         />
         <table className="data-table">
@@ -331,7 +331,7 @@ function StaticView({ data }) {
       <div className="pt-2">
         <SectionHeading
           size="lg"
-          title="Static cost — what the Exchequer forgoes before any response"
+          title="Static fiscal cost"
           description={`Static means wages, employment and behaviour are held fixed: the cost is simply the employer NICs no longer charged in ${data.fiscal_year_label}, computed person by person on the PolicyEngine UK enhanced FRS. Under-21s are already exempt in law, so the marginal cost comes from employed 21-24-year-olds. What happens when employers respond is in the Population (behavioural) view.`}
         />
       </div>
@@ -339,7 +339,7 @@ function StaticView({ data }) {
       <section className="section-card">
         <SectionHeading
           title="Headline results"
-          description="Each card notes the nearest official benchmark."
+          description={`Figures are for ${data.fiscal_year_label}. Each card notes the nearest official benchmark.`}
         />
         <div className="grid gap-4 md:grid-cols-3">
           <MetricCard
@@ -376,7 +376,7 @@ function StaticView({ data }) {
       <section className="section-card">
         <SectionHeading
           title="Detailed breakdown"
-          description={`Employer NICs forgone in the relieved band across all 18-24-year-old employees, split by group. Group totals sum to the full 18-24 quantum of ${formatBn(staticResults.headline_quantum_bn)} — larger than the ${formatBn(staticResults.marginal_cost_bn)} headline cost because they include 18-20-year-olds, whose relief is already law.${dimension === "by_age" ? ` ${data.age_band_note}` : ""}`}
+          description={`Employer NICs forgone in ${data.fiscal_year_label} in the relieved band across all 18-24-year-old employees, split by group. Group totals sum to the full 18-24 quantum of ${formatBn(staticResults.headline_quantum_bn)} — larger than the ${formatBn(staticResults.marginal_cost_bn)} headline cost because they include 18-20-year-olds, whose relief is already law.${dimension === "by_age" ? ` ${data.age_band_note}` : ""}`}
         />
         <div className="mb-4 flex flex-wrap gap-2">
           {DIMENSIONS.map((d) => (
@@ -440,7 +440,7 @@ function BehaviouralView({ data }) {
       <div className="pt-2">
         <SectionHeading
           size="lg"
-          title="Wage pass-through — who keeps the employer's saving?"
+          title="Wage pass-through"
           description={
             <>
               The exemption is paid to employers, so the first behavioural
@@ -533,7 +533,7 @@ function BehaviouralView({ data }) {
 
       <section className="section-card">
         <SectionHeading
-          title="Where the offset comes from"
+          title="Composition of the fiscal offset"
           description={`Decomposition of the fiscal offset under the selected ${formatPct(scenario.pass_through_rate * 100, 0)} pass-through scenario. With zero pass-through no saving reaches workers' pay, so there is no offset, poverty or distributional effect to show — those results exist only for the scenarios with positive pass-through.`}
         />
         {scenario.pass_through_rate > 0 && (
@@ -592,7 +592,7 @@ function BehaviouralView({ data }) {
         <section className="section-card">
           <SectionHeading
             title="Poverty impact"
-            description={`Absolute poverty before housing costs under the ${formatPct(scenario.pass_through_rate * 100, 0)} pass-through scenario, baseline versus reform. Poverty is measured on household income, so people who share a household with a young worker whose pay rises can move out of poverty too.`}
+            description={`Absolute poverty before housing costs in ${data.fiscal_year_label} under the ${formatPct(scenario.pass_through_rate * 100, 0)} pass-through scenario, baseline versus reform. Poverty is measured on household income, so people who share a household with a young worker whose pay rises can move out of poverty too.`}
           />
           <div className="grid gap-4 md:grid-cols-3">
             <MetricCard
@@ -616,7 +616,7 @@ function BehaviouralView({ data }) {
         <section className="section-card">
           <SectionHeading
             title="Average household net income change"
-            description={`Weighted average change in household net income under the ${formatPct(scenario.pass_through_rate * 100, 0)} pass-through scenario, across all households in each baseline income group (gainers and non-gainers alike).`}
+            description={`Weighted average change in household net income in ${data.fiscal_year_label} under the ${formatPct(scenario.pass_through_rate * 100, 0)} pass-through scenario, across all households in each baseline income group (gainers and non-gainers alike).`}
           />
           <div className="mb-4 flex flex-wrap gap-2">
             {["quintiles", "quartiles", "deciles"].map((g) => (
@@ -675,7 +675,7 @@ function BehaviouralView({ data }) {
       <div className="pt-2">
         <SectionHeading
           size="lg"
-          title="Labour demand response — does cheaper hiring create jobs?"
+          title="Labour demand response"
           description={
             <>
               Pass-through decides who keeps the money; the demand response asks
@@ -689,14 +689,14 @@ function BehaviouralView({ data }) {
               rather than adding together. The elasticity arithmetic leaves out
               substitution from workers just outside the age band, wider
               economy-wide responses, and differences between the Swedish
-              setting it was estimated in and the UK (see the{" "}
+              setting it was estimated in and the UK (see the model{" "}
               <Link
                 href="/?tab=methodology#model-omissions"
                 className="underline"
               >
-                omissions
-              </Link>{" "}
-              list); the job numbers are scenario arithmetic, not a forecast.
+                limitations
+              </Link>
+              ); the job numbers are scenario arithmetic, not a forecast.
             </>
           }
         />
@@ -707,8 +707,9 @@ function BehaviouralView({ data }) {
           title="Employment effect by demand elasticity"
           description={
             <>
-              Employment gain among treated 21-24-year-olds from the fall in
-              employment costs, across demand elasticity scenarios (Egebark
+              Employment gain among treated 21-24-year-olds in{" "}
+              {data.fiscal_year_label} from the fall in employment costs,
+              across demand elasticity scenarios (Egebark
               &amp; Kaunitz 2018:{" "}
               <SourceLink href={evidence.egebark_kaunitz_url}>
                 {evidence.egebark_kaunitz_2018}

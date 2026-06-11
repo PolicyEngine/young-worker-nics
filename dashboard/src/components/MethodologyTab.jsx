@@ -34,7 +34,7 @@ export default function MethodologyTab({ data }) {
     <div className="space-y-6">
       <section className="section-card">
         <SectionHeading
-          title="How the model works"
+          title="Model overview"
           description="Static microsimulation with scenario-based behavioural layers."
         />
         <ol className="list-decimal space-y-2 pl-6 text-slate-700">
@@ -65,7 +65,7 @@ export default function MethodologyTab({ data }) {
 
       <section className="section-card">
         <SectionHeading
-          title="How each result is computed"
+          title="Computation methods"
           description="Method explainers written by the analysis pipeline alongside the results, reproduced verbatim. Each section of the analysis links to its entry here."
         />
         <dl className="space-y-4">
@@ -80,8 +80,7 @@ export default function MethodologyTab({ data }) {
 
       <section className="section-card">
         <SectionHeading
-          title="Assumption: wage pass-through"
-          description="Whose pocket does the saving land in?"
+          title="Wage pass-through assumption"
         />
         <p className="mb-3 text-slate-700">
           The <a href={obr.source} target="_blank" rel="noreferrer" className="underline">OBR</a>{" "}
@@ -109,7 +108,7 @@ export default function MethodologyTab({ data }) {
       </section>
 
       <section className="section-card scroll-mt-24" id="model-omissions">
-        <SectionHeading title="What the model omits" />
+        <SectionHeading title="Model limitations" />
         <ul className="list-disc space-y-1 pl-6 text-slate-700">
           <li>
             <a

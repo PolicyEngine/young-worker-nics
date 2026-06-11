@@ -23,7 +23,7 @@ export default function BaselineTab({ data }) {
     <div className="space-y-6">
       <section className="section-card">
         <SectionHeading
-          title="Who are the UK's young people?"
+          title="Youth population by activity status"
           description="Every young person is in exactly one of three states: in education, in employment, or in neither (NEET). The NEET group is who this policy is for; the employed group is who the exemption is paid on. A student with a part-time job counts as both in education and in employment, and is never NEET. Model counts from the PolicyEngine UK enhanced FRS; the official column from the ONS."
         />
         <table className="data-table">
@@ -93,7 +93,7 @@ export default function BaselineTab({ data }) {
       <section className="section-card">
         <SectionHeading
           title="Employer NICs paid on young workers"
-          description={`Modelled employer NICs in the relieved band — earnings between the Secondary and Upper Secondary Thresholds, the only part the zero rate touches — by age band. The 18-20 amount is not actually paid in practice (under-21s are already exempt in law), so the 21-24 row is the reform's marginal static cost. ${data.age_band_note}`}
+          description={`Modelled employer NICs in ${data.fiscal_year_label} in the relieved band — earnings between the Secondary and Upper Secondary Thresholds, the only part the zero rate touches — by age band. The 18-20 amount is not actually paid in practice (under-21s are already exempt in law), so the 21-24 row is the reform's marginal static cost. ${data.age_band_note}`}
         />
         <table className="data-table">
           <thead>
@@ -130,7 +130,7 @@ export default function BaselineTab({ data }) {
 
       <section className="section-card">
         <SectionHeading
-          title="Model vs official statistics"
+          title="Model versus official statistics"
           description="Cross-checks of model aggregates against published official figures."
         />
         <table className="data-table">

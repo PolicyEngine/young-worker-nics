@@ -78,11 +78,6 @@ function Dashboard() {
       <header className="title-row">
         <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-4 md:px-8">
           <h1>Employer NICs exemption for young workers (18-24)</h1>
-          {data && (
-            <span className="rounded-full border border-white/30 px-3 py-1 text-sm text-white/90">
-              Results for {data.fiscal_year_label}
-            </span>
-          )}
         </div>
       </header>
 
