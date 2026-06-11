@@ -1,5 +1,7 @@
 # Employer NICs exemption for young workers (18-24)
 
+**Live dashboard: [young-worker-nics.vercel.app](https://young-worker-nics.vercel.app)**
+
 Data pipeline and dashboard estimating the fiscal cost, distributional impact
 and employment effects of extending the employer NICs zero rate — which
 already covers under-21s (category M, since April 2015) and apprentices under
@@ -62,7 +64,10 @@ means for the 18-21 and 22-29 bands.
 
 Every number on the dashboard comes from the results JSON; every non-PolicyEngine
 assumption carries a value, description and source URL in
-`src/young_worker_nics/sources.py` and is listed on the Methodology tab.
+`src/young_worker_nics/sources.py`, cited inline where the dashboard uses it.
+The pipeline stamps the `policyengine` bundle version it ran on into the JSON
+(the `[uk]` extra exact-pins `policyengine-uk`, so that one version identifies
+the whole simulation stack); the dashboard footer displays it.
 
 ## Policy context
 

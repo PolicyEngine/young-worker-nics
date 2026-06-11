@@ -2,8 +2,7 @@
   "year": 2027,
   "fiscal_year_label": "2027-28",
   "package_versions": {
-    "policyengine": "4.11.0",
-    "policyengine-uk": "2.88.20"
+    "policyengine": "4.11.0"
   },
   "settings": {
     "pass_through_scenarios": [

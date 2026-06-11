@@ -443,9 +443,9 @@ def run(args: argparse.Namespace) -> None:
     output = {
         "year": YEAR,
         "fiscal_year_label": f"{YEAR}-{(YEAR + 1) % 100:02d}",
-        "package_versions": {
-            name: importlib.metadata.version(name) for name in ("policyengine", "policyengine-uk")
-        },
+        # The policyengine[uk] bundle exact-pins policyengine-uk, so the
+        # bundle version alone identifies the whole simulation stack.
+        "package_versions": {"policyengine": importlib.metadata.version("policyengine")},
         "settings": {
             "pass_through_scenarios": list(args.pass_through),
             "demand_elasticities": {

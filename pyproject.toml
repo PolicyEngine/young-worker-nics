@@ -28,8 +28,9 @@ dependencies = [
 
 [project.optional-dependencies]
 simulation = [
-  "policyengine>=4.11.0",
-  "policyengine-uk>=2.88",
+  # The [uk] extra exact-pins policyengine-uk and policyengine_core, so the
+  # bundle version alone determines the whole simulation stack.
+  "policyengine[uk]>=4.11.0",
 ]
 dev = [
   "pytest>=8.0",
