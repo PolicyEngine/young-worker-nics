@@ -1,0 +1,905 @@
+{
+  "year": 2026,
+  "fiscal_year_label": "2026-27",
+  "settings": {
+    "pass_through_scenarios": [
+      0.0,
+      0.25,
+      0.6,
+      0.76
+    ],
+    "demand_elasticities": {
+      "low": -0.15,
+      "central": -0.31,
+      "high": -0.5
+    }
+  },
+  "methods": {
+    "static": "For each employed person in PolicyEngine UK's enhanced-FRS microdata, the employer NICs forgone equal NICs-liable earnings between the Secondary Threshold and the Upper Secondary Threshold (both read from the PolicyEngine parameter tree) times the statutory employer rate, summed with survey weights. The marginal cost covers employed 21-24-year-olds; the 18-24 headline quantum additionally counts under-21s, who are already exempt in law (category M) and carry no marginal Exchequer cost.",
+    "pass_through": "For each pass-through rate s, every employed 21-24-year-old's employment income is raised by s times their employer NICs saving and a full PolicyEngine microsimulation is re-run on the boosted wages. The fiscal offset is the exact simulated change in income tax plus employee NICs plus benefits saved. Employer NICs on the wage increments are excluded because the reform exempts the relieved band; student loan repayments, which also rise with earnings, are conservatively excluded.",
+    "poverty": "Poverty impacts compare the baseline simulation with each boosted-wage simulation on PolicyEngine's before-housing-costs absolute poverty measure: a person counts as in poverty if their household's equivalised HBAI net income falls below the DWP absolute low-income threshold (CPI-uprated), with person-weighted headcounts. Deep poverty uses half that threshold. Because the line is an absolute parameter rather than a within-simulation median, it is identical in baseline and reform by construction. The zero-pass-through central case changes no wages, so it has no poverty impact.",
+    "distributional": "Distributional impacts compare household net income between the baseline and each boosted-wage simulation. Households are ranked by baseline equivalised HBAI net income with person-weighted quantile boundaries (PolicyEngine's published convention) into deciles, quintiles or quartiles; the chart shows the weighted average change across all households in each group, gainers and non-gainers alike. The Gini index is computed over people, each carrying their household's equivalised net income, in baseline and reform.",
+    "employment": "Employment effects apply external labour demand elasticities to the simulated percentage fall in total employment cost (gross pay plus employer NICs) for employed 21-24-year-olds; new jobs equal the elasticity times the average cost wedge times the weighted employee count. This is a partial-equilibrium scenario range, not a forecast, and is independent of the pass-through scenarios. Elasticity values and citations are in the assumptions block.",
+    "reform_object": "As a build-time cross-check, the static cost is recomputed by passing a PolicyEngine Reform object that zero-rates employer NICs between the Secondary and Upper Secondary Thresholds for ages 18-24, and differencing the simulated employer NICs against baseline on the same masks. The build fails if this diverges from the direct threshold arithmetic by more than 0.1%.",
+    "reconciliation": "Every young person is in exactly one of three states: in education, in employment, or in neither (NEET). Model counts come from the enhanced FRS: 'in education' is a current education status other than NOT_IN_EDUCATION, 'in employment' is any employment income in the year (so working students appear in both), and the NEET proxy is people in neither. This proxy differs from the ONS LFS measure, which is a point-in-time status that also counts training, so the model understates the official NEET level; the model's 16-24 population also runs below the ONS-implied total because the FRS calibration targets broad age bands rather than this age range exactly. The NEET figure is who the policy is FOR; the employee figure is who the exemption is PAID ON \u2014 the gap between them is why much of a blanket hiring subsidy goes to employment that would exist anyway."
+  },
+  "nics_parameters": {
+    "employer_rate": 0.15,
+    "secondary_threshold_annual": 4992.0,
+    "upper_secondary_threshold_annual": 50269.96
+  },
+  "reform_definition": {
+    "reform_age_lower": 18,
+    "reform_age_upper": 24,
+    "marginal_age_lower": 21
+  },
+  "assumptions": {
+    "pass_through_scenarios": [
+      {
+        "value": 0.0,
+        "description": "Central case: zero pass-through to targeted workers' own wages, from the Swedish under-26 payroll tax cut (Saez, Schoefer & Seim 2019 AER).",
+        "url": "https://www.aeaweb.org/articles?id=10.1257/aer.20171937"
+      },
+      {
+        "value": 0.25,
+        "description": "Intermediate sensitivity, in the range found for regional payroll tax changes (Bennmarker et al. 2009; Korkeam\u00e4ki & Uusitalo 2009).",
+        "url": "https://doi.org/10.1016/j.labeco.2009.04.003"
+      },
+      {
+        "value": 0.6,
+        "description": "OBR first-year assumption for the 2024 employer NICs rise, applied symmetrically (EFO October 2024).",
+        "url": "https://obr.uk/efo/economic-and-fiscal-outlook-october-2024/"
+      },
+      {
+        "value": 0.76,
+        "description": "OBR medium-term assumption for the 2024 employer NICs rise, applied symmetrically (EFO October 2024).",
+        "url": "https://obr.uk/efo/economic-and-fiscal-outlook-october-2024/"
+      }
+    ],
+    "demand_elasticities": {
+      "low": {
+        "value": -0.15,
+        "description": "Lower bound of Hamermesh's (1993) constant-output range.",
+        "url": "https://press.princeton.edu/books/paperback/9780691025872/labor-demand"
+      },
+      "central": {
+        "value": -0.31,
+        "description": "Youth labour demand elasticity from the Swedish payroll tax cut (Egebark & Kaunitz 2018, Labour Economics).",
+        "url": "https://doi.org/10.1016/j.labeco.2018.10.001"
+      },
+      "high": {
+        "value": -0.5,
+        "description": "Upper sensitivity, within the low-skilled range of the Lichter, Peichl & Siegloch (2015) meta-analysis (median -0.25).",
+        "url": "https://doi.org/10.1016/j.euroecorev.2015.08.007"
+      }
+    },
+    "calculator_annual_rent": {
+      "value": 9600,
+      "description": "Illustrative private rent for the renter calculator profile (\u00a3800/month, around the level of a modest one-bed/room outside London).",
+      "url": "https://www.ons.gov.uk/economy/inflationandpriceindices/bulletins/privaterentandhousepricesuk/latest"
+    }
+  },
+  "statutory_unmodelled": {
+    "employment_allowance": {
+      "value": 10500,
+      "description": "Employment Allowance: annual employer NICs relief for eligible employers from April 2025; not modelled in PolicyEngine UK (no employer-level data in the FRS).",
+      "url": "https://www.gov.uk/claim-employment-allowance"
+    },
+    "under_21_relief": {
+      "value": null,
+      "description": "Zero rate of employer NICs for under-21s (category M), since April 2015.",
+      "url": "https://www.gov.uk/national-insurance-rates-letters"
+    },
+    "apprentice_relief": {
+      "value": null,
+      "description": "Zero rate of employer NICs for apprentices under 25 (category H), since April 2016.",
+      "url": "https://www.gov.uk/national-insurance-rates-letters"
+    },
+    "rates_and_thresholds": {
+      "value": null,
+      "description": "HMRC rates and thresholds for employers, 2026-27.",
+      "url": "https://www.gov.uk/guidance/rates-and-thresholds-for-employers-2026-to-2027"
+    },
+    "nics_act_2025": {
+      "value": null,
+      "description": "National Insurance Contributions (Secondary Class 1 Contributions) Act 2025: 15% rate and \u00a35,000 Secondary Threshold from April 2025.",
+      "url": "https://www.legislation.gov.uk/ukpga/2025/11"
+    }
+  },
+  "official_stats": {
+    "neet": {
+      "level": 1012000,
+      "rate": 0.135,
+      "year_on_year_change": 89000,
+      "period_label": "Jan-Mar 2026",
+      "change_period_label": "January-March 2025 to January-March 2026",
+      "release_label": "ONS, May 2026",
+      "description": "Young people aged 16-24 not in education, employment or training, UK.",
+      "source": "https://www.ons.gov.uk/employmentandlabourmarket/peoplenotinwork/unemployment/bulletins/youngpeoplenotineducationemploymentortrainingneet/may2026"
+    },
+    "hmrc_relief": {
+      "under_21_relief_cost_2024_25_bn": 1.1,
+      "under_21_relief_forecast_2025_26_bn": 1.9,
+      "apprentice_relief_forecast_2025_26_bn": 0.57,
+      "under_21_employers_claiming_2024_25": 340000,
+      "outturn_period_label": "2024-25",
+      "forecast_period_label": "2025-26",
+      "description": "HMRC tax relief statistics (January 2026), Table 2: measured cost of the under-21 (category M) and apprentice under-25 (category H) employer NICs zero rates. The 2025-26 forecast is the first scored at post-April-2025 parameters (15% rate, \u00a35,000 Secondary Threshold), so it is directly comparable with the model's relieved band. HMRC measures relief actually claimed through payroll category letters, which undercounts entitlement where employers never switch category.",
+      "source": "https://www.gov.uk/government/statistics/tax-reliefs/tax-relief-statistics-january-2026"
+    },
+    "lfs_employment": {
+      "employment_18_24": 3444000,
+      "employment_rate_18_24": 0.586,
+      "period_label": "Jan-Mar 2026",
+      "release_label": "ONS A05 SA, May 2026 release",
+      "description": "LFS employment level and rate, ages 18-24, UK, seasonally adjusted (ONS dataset A05 SA). LFS employment includes the self-employed; the model counts employees with positive employment income only.",
+      "source": "https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/employmentandemployeetypes/datasets/employmentunemploymentandeconomicinactivitybyagegroupseasonallyadjusteda05sa"
+    },
+    "ashe_earnings": {
+      "mean_annual_pay_18_21": 15254,
+      "mean_annual_pay_22_29": 31719,
+      "median_annual_pay_18_21": 13069,
+      "median_annual_pay_22_29": 29855,
+      "period_label": "April 2025 (provisional)",
+      "description": "ASHE Table 6.7a (2025 provisional): gross annual pay, all employees (full- and part-time) by age band. ASHE samples employee jobs on PAYE in April, so it misses part-year jobs that the model's annual income measure includes.",
+      "source": "https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/datasets/agegroupashetable6"
+    },
+    "rti": {
+      "payrolled_total_latest": 30200000,
+      "payrolled_under_25_change_yoy": -55000,
+      "period_label": "April 2026",
+      "description": "HMRC PAYE Real Time Information payrolled employees.",
+      "source": "https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/bulletins/earningsandemploymentfrompayasyouearnrealtimeinformationuk/latest"
+    },
+    "obr": {
+      "initial_pass_through": 0.6,
+      "initial_year_label": "2025-26",
+      "medium_term_pass_through": 0.76,
+      "medium_term_year_label": "2026-27",
+      "nics_rise_year": 2024,
+      "description": "OBR incidence assumptions for the Autumn Budget 2024 employer NICs rise (EFO October 2024).",
+      "source": "https://obr.uk/efo/economic-and-fiscal-outlook-october-2024/"
+    },
+    "obr_nics_rise": {
+      "static_yield_2025_26_bn": 23.9,
+      "static_yield_2026_27_bn": 24.3,
+      "post_behavioural_yield_2029_30_bn": 16.1,
+      "labour_supply_effect_hours_equivalents": -50000,
+      "description": "OBR supplementary forecast release (May 2025): HMRC's static costing of the April 2025 employer NICs package (15% rate, \u00a35,000 Secondary Threshold, Employment Allowance changes), certified by the OBR \u2014 Table 1.5. The October 2024 EFO judged the rise would reduce labour supply by around 50,000 average-hours equivalents; the OBR publishes no youth-specific labour demand elasticity.",
+      "source": "https://obr.uk/supplementary-forecast-information-on-static-costing-of-changes-to-employer-national-insurance-contributions/"
+    },
+    "elasticity_evidence": {
+      "egebark_kaunitz_2018": -0.31,
+      "egebark_kaunitz_url": "https://doi.org/10.1016/j.labeco.2018.10.001",
+      "lichter_2015_meta": -0.25,
+      "lichter_url": "https://doi.org/10.1016/j.euroecorev.2015.08.007",
+      "egebark_kaunitz_cost_per_job_multiple": 4,
+      "description": "Youth labour demand elasticities and cost-per-job from the Swedish under-26 payroll tax cut literature.",
+      "source": "https://doi.org/10.1016/j.labeco.2018.10.001"
+    }
+  },
+  "age_band_note": "Enhanced-FRS calibration constrains 10-year age bands, not single years of age, so single-age figures are indicative \u2014 weight can slide between adjacent ages. The 18-20 / 21-24 split follows the under-21 zero-rate boundary and crosses the calibrated age-20 band edge.",
+  "baseline": {
+    "n_employees_18_24": 3199625.7887873338,
+    "n_employees_21_24": 2353660.740666745,
+    "employer_nics_18_24_bn": 10.709186896715826,
+    "static_cost_18_20_bn": 2.0196448664737665,
+    "by_age_band": [
+      {
+        "group": "18-20",
+        "n_employees": 845965.0481205884,
+        "static_cost_bn": 2.0196448664737665
+      },
+      {
+        "group": "21-24",
+        "n_employees": 2353660.740666745,
+        "static_cost_bn": 7.440620543163731
+      }
+    ],
+    "reconciliation": {
+      "model_16_24": {
+        "population": 6447870.823820231,
+        "in_education": 2969665.7624638397,
+        "in_education_not_working": 2404796.3728755927,
+        "in_employment": 3273158.0619519125,
+        "neet_proxy": 769916.3889927249,
+        "neet_proxy_rate": 0.11940629861076611
+      },
+      "model_18_24": {
+        "population": 4434822.691696371,
+        "in_education": 1107734.1501125775,
+        "in_education_not_working": 564779.4062150107,
+        "in_employment": 3199625.7887873338,
+        "neet_proxy": 670417.4966940265,
+        "neet_proxy_rate": 0.15117120644965043
+      },
+      "official_16_24": {
+        "neet_level": 1012000,
+        "neet_rate": 0.135,
+        "population_implied": 7496296.296296296,
+        "period_label": "Jan-Mar 2026",
+        "source": "https://www.ons.gov.uk/employmentandlabourmarket/peoplenotinwork/unemployment/bulletins/youngpeoplenotineducationemploymentortrainingneet/may2026"
+      }
+    }
+  },
+  "reform": {
+    "static": {
+      "marginal_cost_bn": 7.440620543163731,
+      "headline_quantum_bn": 9.460265409637495,
+      "n_marginal_employees": 2353660.740666745,
+      "avg_saving_per_employee": 3161.296959499758,
+      "by_age_band": [
+        {
+          "group": "18-20",
+          "n_employees": 845965.0481205884,
+          "static_cost_bn": 2.0196448664737665
+        },
+        {
+          "group": "21-24",
+          "n_employees": 2353660.740666745,
+          "static_cost_bn": 7.440620543163731
+        }
+      ],
+      "by_age": [
+        {
+          "group": "18",
+          "n_employees": 192426.74035602645,
+          "static_cost_bn": 0.33745091901446084
+        },
+        {
+          "group": "19",
+          "n_employees": 523133.93120297417,
+          "static_cost_bn": 1.399450569365669
+        },
+        {
+          "group": "20",
+          "n_employees": 130404.3765615878,
+          "static_cost_bn": 0.2827433780936363
+        },
+        {
+          "group": "21",
+          "n_employees": 207301.0476760047,
+          "static_cost_bn": 0.5979659319728717
+        },
+        {
+          "group": "22",
+          "n_employees": 535630.9947539566,
+          "static_cost_bn": 1.3957810574969987
+        },
+        {
+          "group": "23",
+          "n_employees": 745407.7369793782,
+          "static_cost_bn": 2.7141821963734247
+        },
+        {
+          "group": "24",
+          "n_employees": 865320.961257406,
+          "static_cost_bn": 2.7326913573204346
+        }
+      ],
+      "by_gender": [
+        {
+          "group": "Female",
+          "n_employees": 1785542.5140592456,
+          "static_cost_bn": 4.825672141391032
+        },
+        {
+          "group": "Male",
+          "n_employees": 1414083.2747280882,
+          "static_cost_bn": 4.634593268246464
+        }
+      ],
+      "by_country": [
+        {
+          "group": "England",
+          "n_employees": 2534599.6622379865,
+          "static_cost_bn": 7.61669858715791
+        },
+        {
+          "group": "Scotland",
+          "n_employees": 444385.1378314311,
+          "static_cost_bn": 1.193406220256531
+        },
+        {
+          "group": "Wales",
+          "n_employees": 141097.21251569502,
+          "static_cost_bn": 0.41862586023005305
+        },
+        {
+          "group": "Northern Ireland",
+          "n_employees": 79543.77620222128,
+          "static_cost_bn": 0.23153474199300172
+        }
+      ],
+      "by_income_decile": [
+        {
+          "group": "1",
+          "n_employees": 111377.34559018281,
+          "static_cost_bn": 0.10088080885275755
+        },
+        {
+          "group": "2",
+          "n_employees": 58051.28508864215,
+          "static_cost_bn": 0.09587577108854757
+        },
+        {
+          "group": "3",
+          "n_employees": 356413.5133597604,
+          "static_cost_bn": 0.5384969856538255
+        },
+        {
+          "group": "4",
+          "n_employees": 424962.0924271578,
+          "static_cost_bn": 1.1119577935259395
+        },
+        {
+          "group": "5",
+          "n_employees": 234317.93254452804,
+          "static_cost_bn": 0.7113420074398178
+        },
+        {
+          "group": "6",
+          "n_employees": 493512.632136666,
+          "static_cost_bn": 1.468534405131359
+        },
+        {
+          "group": "7",
+          "n_employees": 417678.37874266924,
+          "static_cost_bn": 1.498788740106147
+        },
+        {
+          "group": "8",
+          "n_employees": 454908.802998791,
+          "static_cost_bn": 1.6538528741901066
+        },
+        {
+          "group": "9",
+          "n_employees": 261978.444560986,
+          "static_cost_bn": 0.8538226191873403
+        },
+        {
+          "group": "10",
+          "n_employees": 386386.8260381443,
+          "static_cost_bn": 1.4267134044616552
+        }
+      ],
+      "by_income_quintile": [
+        {
+          "group": "1",
+          "n_employees": 169428.63067882496,
+          "static_cost_bn": 0.19675657994130513
+        },
+        {
+          "group": "2",
+          "n_employees": 781375.6057869182,
+          "static_cost_bn": 1.650454779179765
+        },
+        {
+          "group": "3",
+          "n_employees": 727830.564681194,
+          "static_cost_bn": 2.179876412571177
+        },
+        {
+          "group": "4",
+          "n_employees": 872587.1817414602,
+          "static_cost_bn": 3.1526416142962543
+        },
+        {
+          "group": "5",
+          "n_employees": 648365.2705991303,
+          "static_cost_bn": 2.2805360236489953
+        }
+      ],
+      "by_income_quartile": [
+        {
+          "group": "1",
+          "n_employees": 357011.6106336323,
+          "static_cost_bn": 0.5080830384648929
+        },
+        {
+          "group": "2",
+          "n_employees": 828149.0936764451,
+          "static_cost_bn": 2.050470328095995
+        },
+        {
+          "group": "3",
+          "n_employees": 1109075.951147692,
+          "static_cost_bn": 3.6805103496100804
+        },
+        {
+          "group": "4",
+          "n_employees": 905389.1333295645,
+          "static_cost_bn": 3.2212016934665284
+        }
+      ]
+    },
+    "pass_through": [
+      {
+        "pass_through_rate": 0.0,
+        "gross_cost_bn": 7.440620543163731,
+        "fiscal_offset_bn": 0.0,
+        "offset_components_bn": {
+          "income_tax": 0.0,
+          "employee_nics": 0.0,
+          "benefits_saved": 0.0
+        },
+        "net_cost_bn": 7.440620543163731,
+        "avg_wage_gain": 0.0,
+        "poverty": null,
+        "inequality": null,
+        "avg_change_by_group": null
+      },
+      {
+        "pass_through_rate": 0.25,
+        "gross_cost_bn": 7.440620543163731,
+        "fiscal_offset_bn": 0.5349269245747986,
+        "offset_components_bn": {
+          "income_tax": 0.3791606765397949,
+          "employee_nics": 0.1444422868580017,
+          "benefits_saved": 0.011323961177001953
+        },
+        "net_cost_bn": 6.905693618588932,
+        "avg_wage_gain": 790.3242398749395,
+        "poverty": {
+          "baseline_rate_bhc": 0.0985381789163748,
+          "reformed_rate_bhc": 0.09844312610932447,
+          "baseline_rate_bhc_18_24": 0.10150984533311556,
+          "reformed_rate_bhc_18_24": 0.10087021864807333,
+          "people_lifted": 6777.5558695197105,
+          "people_lifted_18_24": 2836.630937039852,
+          "baseline_deep_rate_bhc": 0.014929040362458576,
+          "reformed_deep_rate_bhc": 0.01492884470201518
+        },
+        "inequality": {
+          "baseline_gini": 0.29787795177308024,
+          "reformed_gini": 0.2978336691059864
+        },
+        "avg_change_by_group": {
+          "deciles": [
+            {
+              "group": 1,
+              "avg_change_per_household": 2.587127034194333,
+              "total_change_bn": 0.009678633905067343,
+              "n_households": 3741074.086097749
+            },
+            {
+              "group": 2,
+              "avg_change_per_household": 3.5201796541608052,
+              "total_change_bn": 0.010625588343233546,
+              "n_households": 3018478.9945803597
+            },
+            {
+              "group": 3,
+              "avg_change_per_household": 18.087238409142586,
+              "total_change_bn": 0.05775958378838845,
+              "n_households": 3193388.757412111
+            },
+            {
+              "group": 4,
+              "avg_change_per_household": 51.86427416168971,
+              "total_change_bn": 0.17889250638756737,
+              "n_households": 3449243.420044021
+            },
+            {
+              "group": 5,
+              "avg_change_per_household": 33.83038482383744,
+              "total_change_bn": 0.11509060685254968,
+              "n_households": 3401989.2901559593
+            },
+            {
+              "group": 6,
+              "avg_change_per_household": 75.91687922110114,
+              "total_change_bn": 0.22877425458082223,
+              "n_households": 3013483.3903608923
+            },
+            {
+              "group": 7,
+              "avg_change_per_household": 79.62129163138444,
+              "total_change_bn": 0.25733135031573556,
+              "n_households": 3231941.4197282745
+            },
+            {
+              "group": 8,
+              "avg_change_per_household": 93.14537380016448,
+              "total_change_bn": 0.2700029807419907,
+              "n_households": 2898726.6863221703
+            },
+            {
+              "group": 9,
+              "avg_change_per_household": 27.996637545848934,
+              "total_change_bn": 0.08676153688166272,
+              "n_households": 3098998.468640276
+            },
+            {
+              "group": 10,
+              "avg_change_per_household": 36.36460096391471,
+              "total_change_bn": 0.11011466856202283,
+              "n_households": 3028073.06125239
+            }
+          ],
+          "quintiles": [
+            {
+              "group": 1,
+              "avg_change_per_household": 3.0037817598236836,
+              "total_change_bn": 0.02030422224830089,
+              "n_households": 6759553.080678109
+            },
+            {
+              "group": 2,
+              "avg_change_per_household": 35.626252343025904,
+              "total_change_bn": 0.23665209017595576,
+              "n_households": 6642632.177456131
+            },
+            {
+              "group": 3,
+              "avg_change_per_household": 53.59930258570892,
+              "total_change_bn": 0.34386486143337186,
+              "n_households": 6415472.680516852
+            },
+            {
+              "group": 4,
+              "avg_change_per_household": 86.01580153022677,
+              "total_change_bn": 0.5273343310577263,
+              "n_households": 6130668.106050445
+            },
+            {
+              "group": 5,
+              "avg_change_per_household": 32.13218655652522,
+              "total_change_bn": 0.19687620544368553,
+              "n_households": 6127071.529892666
+            }
+          ],
+          "quartiles": [
+            {
+              "group": 1,
+              "avg_change_per_household": 8.584256170835127,
+              "total_change_bn": 0.0715909237747289,
+              "n_households": 8339793.495207882
+            },
+            {
+              "group": 2,
+              "avg_change_per_household": 35.4965110405404,
+              "total_change_bn": 0.3004559955020775,
+              "n_households": 8464381.053082319
+            },
+            {
+              "group": 3,
+              "avg_change_per_household": 77.64151714619446,
+              "total_change_bn": 0.6055496825353838,
+              "n_households": 7799302.548341102
+            },
+            {
+              "group": 4,
+              "avg_change_per_household": 46.498769569556885,
+              "total_change_bn": 0.34743510854685034,
+              "n_households": 7471920.477962902
+            }
+          ]
+        }
+      },
+      {
+        "pass_through_rate": 0.6,
+        "gross_cost_bn": 7.440620543163731,
+        "fiscal_offset_bn": 1.2797841034288253,
+        "offset_components_bn": {
+          "income_tax": 0.9129921590708618,
+          "employee_nics": 0.3467944463228073,
+          "benefits_saved": 0.01999749803515625
+        },
+        "net_cost_bn": 6.160836439734905,
+        "avg_wage_gain": 1896.778233793846,
+        "poverty": {
+          "baseline_rate_bhc": 0.0985381789163748,
+          "reformed_rate_bhc": 0.09844269016284386,
+          "baseline_rate_bhc_18_24": 0.10150984533311556,
+          "reformed_rate_bhc_18_24": 0.10086546749518532,
+          "people_lifted": 6808.640186965466,
+          "people_lifted_18_24": 2857.7014576792717,
+          "baseline_deep_rate_bhc": 0.014929040362458576,
+          "reformed_deep_rate_bhc": 0.01492884470201518
+        },
+        "inequality": {
+          "baseline_gini": 0.29787795177308024,
+          "reformed_gini": 0.29780390822069197
+        },
+        "avg_change_by_group": {
+          "deciles": [
+            {
+              "group": 1,
+              "avg_change_per_household": 6.129432274496809,
+              "total_change_bn": 0.022930660244611198,
+              "n_households": 3741074.086097749
+            },
+            {
+              "group": 2,
+              "avg_change_per_household": 10.704759104155034,
+              "total_change_bn": 0.03231209049793484,
+              "n_households": 3018478.9945803597
+            },
+            {
+              "group": 3,
+              "avg_change_per_household": 43.480304570751784,
+              "total_change_bn": 0.13884951578509316,
+              "n_households": 3193388.757412111
+            },
+            {
+              "group": 4,
+              "avg_change_per_household": 124.45374219343326,
+              "total_change_bn": 0.42927125136055466,
+              "n_households": 3449243.420044021
+            },
+            {
+              "group": 5,
+              "avg_change_per_household": 81.2107590548999,
+              "total_change_bn": 0.2762781325502055,
+              "n_households": 3401989.2901559593
+            },
+            {
+              "group": 6,
+              "avg_change_per_household": 182.20309914353518,
+              "total_change_bn": 0.5490660129413222,
+              "n_households": 3013483.3903608923
+            },
+            {
+              "group": 7,
+              "avg_change_per_household": 191.05056306725,
+              "total_change_bn": 0.6174642280394542,
+              "n_households": 3231941.4197282745
+            },
+            {
+              "group": 8,
+              "avg_change_per_household": 223.20654641899742,
+              "total_change_bn": 0.6470147726665562,
+              "n_households": 2898726.6863221703
+            },
+            {
+              "group": 9,
+              "avg_change_per_household": 66.81226733309471,
+              "total_change_bn": 0.20705111415164526,
+              "n_households": 3098998.468640276
+            },
+            {
+              "group": 10,
+              "avg_change_per_household": 87.1609549766782,
+              "total_change_bn": 0.2639297397579117,
+              "n_households": 3028073.06125239
+            }
+          ],
+          "quintiles": [
+            {
+              "group": 1,
+              "avg_change_per_household": 8.172544853661266,
+              "total_change_bn": 0.055242750742546046,
+              "n_households": 6759553.080678109
+            },
+            {
+              "group": 2,
+              "avg_change_per_household": 85.5264527627685,
+              "total_change_bn": 0.5681207671456479,
+              "n_households": 6642632.177456131
+            },
+            {
+              "group": 3,
+              "avg_change_per_household": 128.6490000959735,
+              "total_change_bn": 0.8253441454915278,
+              "n_households": 6415472.680516852
+            },
+            {
+              "group": 4,
+              "avg_change_per_household": 206.25468200734562,
+              "total_change_bn": 1.2644790007060103,
+              "n_households": 6130668.106050445
+            },
+            {
+              "group": 5,
+              "avg_change_per_household": 76.86883556226536,
+              "total_change_bn": 0.47098085390955696,
+              "n_households": 6127071.529892666
+            }
+          ],
+          "quartiles": [
+            {
+              "group": 1,
+              "avg_change_per_household": 21.41028846008384,
+              "total_change_bn": 0.17855738442993158,
+              "n_households": 8339793.495207882
+            },
+            {
+              "group": 2,
+              "avg_change_per_household": 85.19043052130596,
+              "total_change_bn": 0.7210842660084678,
+              "n_households": 8464381.053082319
+            },
+            {
+              "group": 3,
+              "avg_change_per_household": 186.208897014508,
+              "total_change_bn": 1.4522995250090383,
+              "n_households": 7799302.548341102
+            },
+            {
+              "group": 4,
+              "avg_change_per_household": 111.3805138856007,
+              "total_change_bn": 0.8322263425478512,
+              "n_households": 7471920.477962902
+            }
+          ]
+        }
+      },
+      {
+        "pass_through_rate": 0.76,
+        "gross_cost_bn": 7.440620543163731,
+        "fiscal_offset_bn": 1.624110950858757,
+        "offset_components_bn": {
+          "income_tax": 1.157810615944397,
+          "employee_nics": 0.43928043213799284,
+          "benefits_saved": 0.027019902776367188
+        },
+        "net_cost_bn": 5.816509592304974,
+        "avg_wage_gain": 2402.5856532211365,
+        "poverty": {
+          "baseline_rate_bhc": 0.0985381789163748,
+          "reformed_rate_bhc": 0.09843144336978735,
+          "baseline_rate_bhc_18_24": 0.10150984533311556,
+          "reformed_rate_bhc_18_24": 0.10077357350731607,
+          "people_lifted": 7610.570931136608,
+          "people_lifted_18_24": 3265.2350003123283,
+          "baseline_deep_rate_bhc": 0.014929040362458576,
+          "reformed_deep_rate_bhc": 0.01492884470201518
+        },
+        "inequality": {
+          "baseline_gini": 0.29787795177308024,
+          "reformed_gini": 0.29780242818770086
+        },
+        "avg_change_by_group": {
+          "deciles": [
+            {
+              "group": 1,
+              "avg_change_per_household": 7.715077896592341,
+              "total_change_bn": 0.028862677991167134,
+              "n_households": 3741074.086097749
+            },
+            {
+              "group": 2,
+              "avg_change_per_household": 12.916458083275385,
+              "total_change_bn": 0.03898805740874445,
+              "n_households": 3018478.9945803597
+            },
+            {
+              "group": 3,
+              "avg_change_per_household": 55.01618718753217,
+              "total_change_bn": 0.17568807364034544,
+              "n_households": 3193388.757412111
+            },
+            {
+              "group": 4,
+              "avg_change_per_household": 157.60764312431817,
+              "total_change_bn": 0.5436271259952008,
+              "n_households": 3449243.420044021
+            },
+            {
+              "group": 5,
+              "avg_change_per_household": 102.86959539384986,
+              "total_change_bn": 0.34996126181255405,
+              "n_households": 3401989.2901559593
+            },
+            {
+              "group": 6,
+              "avg_change_per_household": 230.7821905457204,
+              "total_change_bn": 0.695458298000631,
+              "n_households": 3013483.3903608923
+            },
+            {
+              "group": 7,
+              "avg_change_per_household": 241.9927801083995,
+              "total_change_bn": 0.7821064893075328,
+              "n_households": 3231941.4197282745
+            },
+            {
+              "group": 8,
+              "avg_change_per_household": 282.6601229563841,
+              "total_change_bn": 0.8193544415727765,
+              "n_households": 2898726.6863221703
+            },
+            {
+              "group": 9,
+              "avg_change_per_household": 84.52711420902915,
+              "total_change_bn": 0.26194939749236307,
+              "n_households": 3098998.468640276
+            },
+            {
+              "group": 10,
+              "avg_change_per_household": 110.38032107045264,
+              "total_change_bn": 0.3342396767258272,
+              "n_households": 3028073.06125239
+            }
+          ],
+          "quintiles": [
+            {
+              "group": 1,
+              "avg_change_per_household": 10.03775465479515,
+              "total_change_bn": 0.06785073539991159,
+              "n_households": 6759553.080678109
+            },
+            {
+              "group": 2,
+              "avg_change_per_household": 108.28767579164916,
+              "total_change_bn": 0.7193151996355461,
+              "n_households": 6642632.177456131
+            },
+            {
+              "group": 3,
+              "avg_change_per_household": 162.95285037812093,
+              "total_change_bn": 1.045419559813185,
+              "n_households": 6415472.680516852
+            },
+            {
+              "group": 4,
+              "avg_change_per_household": 261.2212736324454,
+              "total_change_bn": 1.6014609308803092,
+              "n_households": 6130668.106050445
+            },
+            {
+              "group": 5,
+              "avg_change_per_household": 97.30408259631243,
+              "total_change_bn": 0.5961890742181903,
+              "n_households": 6127071.529892666
+            }
+          ],
+          "quartiles": [
+            {
+              "group": 1,
+              "avg_change_per_household": 26.84438850576746,
+              "total_change_bn": 0.22387665664323267,
+              "n_households": 8339793.495207882
+            },
+            {
+              "group": 2,
+              "avg_change_per_household": 107.89336331594113,
+              "total_change_bn": 0.913250540204779,
+              "n_households": 8464381.053082319
+            },
+            {
+              "group": 3,
+              "avg_change_per_household": 235.83672885236984,
+              "total_change_bn": 1.8393620003307176,
+              "n_households": 7799302.548341102
+            },
+            {
+              "group": 4,
+              "avg_change_per_household": 141.02750502715466,
+              "total_change_bn": 1.0537463027684129,
+              "n_households": 7471920.477962902
+            }
+          ]
+        }
+      }
+    ],
+    "employment": [
+      {
+        "scenario": "low",
+        "demand_elasticity": -0.15,
+        "avg_cost_wedge_pct": 0.10360342983084933,
+        "employment_gain_pct": 0.015540514474627398,
+        "new_jobs": 36577.098808693794,
+        "static_cost_per_job": 203422.92815730956
+      },
+      {
+        "scenario": "central",
+        "demand_elasticity": -0.31,
+        "avg_cost_wedge_pct": 0.10360342983084933,
+        "employment_gain_pct": 0.03211706324756329,
+        "new_jobs": 75592.67087130052,
+        "static_cost_per_job": 98430.44910837557
+      },
+      {
+        "scenario": "high",
+        "demand_elasticity": -0.5,
+        "avg_cost_wedge_pct": 0.10360342983084933,
+        "employment_gain_pct": 0.051801714915424665,
+        "new_jobs": 121923.662695646,
+        "static_cost_per_job": 61026.87844719286
+      }
+    ]
+  },
+  "person_calculator": null
+}

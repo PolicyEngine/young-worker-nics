@@ -1,0 +1,51 @@
+name: Pull request
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Ruff format check
+        run: uvx ruff format --check .
+      - name: Ruff lint
+        run: uvx ruff check .
+
+  test:
+    name: Test (${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Create venv and install
+        run: |
+          uv venv --python ${{ matrix.python-version }} .venv
+          uv pip install --python .venv/bin/python -e .[dev]
+      - name: Pytest
+        run: .venv/bin/pytest tests/ -v
+
+  dashboard-build:
+    name: Dashboard build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install deps
+        working-directory: dashboard
+        run: bun install --frozen-lockfile
+      - name: Build
+        working-directory: dashboard
+        run: bun run build
