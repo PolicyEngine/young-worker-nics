@@ -20,7 +20,7 @@ export default function BaselineTab({ data }) {
   const relievedTotal = band1820.static_cost_bn + band2124.static_cost_bn;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    <div className="space-y-6">
       <section className="section-card">
         <SectionHeading
           title="Who are the UK's young people?"
@@ -40,7 +40,17 @@ export default function BaselineTab({ data }) {
               <td>Population</td>
               <td>{formatCount(recon.model_16_24.population)}</td>
               <td>{formatCount(recon.model_18_24.population)}</td>
-              <td>~{formatCount(recon.official_16_24.population_implied)}</td>
+              <td>
+                ~
+                <a
+                  href={recon.official_16_24.source}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline"
+                >
+                  {formatCount(recon.official_16_24.population_implied)}
+                </a>
+              </td>
             </tr>
             <tr>
               <td>In education</td>
@@ -71,9 +81,9 @@ export default function BaselineTab({ data }) {
                   rel="noreferrer"
                   className="underline"
                 >
-                  {formatCount(recon.official_16_24.neet_level)} (
-                  {formatPct(recon.official_16_24.neet_rate * 100)})
-                </a>
+                  {formatCount(recon.official_16_24.neet_level)}
+                </a>{" "}
+                ({formatPct(recon.official_16_24.neet_rate * 100)})
               </td>
             </tr>
           </tbody>
@@ -141,9 +151,9 @@ export default function BaselineTab({ data }) {
               </td>
               <td>
                 <a href={hmrc.source} target="_blank" rel="noreferrer" className="underline">
-                  {formatBn(hmrc.under_21_relief_forecast_2025_26_bn)} HMRC forecast{" "}
-                  {hmrc.forecast_period_label}
-                </a>
+                  {formatBn(hmrc.under_21_relief_forecast_2025_26_bn)}
+                </a>{" "}
+                HMRC forecast {hmrc.forecast_period_label}
               </td>
               <td>
                 HMRC&apos;s {hmrc.forecast_period_label} forecast for the under-21
@@ -161,18 +171,19 @@ export default function BaselineTab({ data }) {
               <td>{formatCount(baseline.n_employees_18_24)}</td>
               <td>
                 <a href={lfs.source} target="_blank" rel="noreferrer" className="underline">
-                  {formatCount(lfs.employment_18_24)} in employment,{" "}
-                  {lfs.period_label} (LFS)
-                </a>
+                  {formatCount(lfs.employment_18_24)}
+                </a>{" "}
+                in employment, {lfs.period_label} (LFS)
               </td>
               <td>
                 The LFS figure ({formatPct(lfs.employment_rate_18_24 * 100)} employment
                 rate) includes the self-employed, whom the model&apos;s employee count
-                excludes, so the model sits below it.{" "}
+                excludes, so the model sits below it. HMRC{" "}
                 <a href={rti.source} target="_blank" rel="noreferrer" className="underline">
-                  HMRC RTI&apos;s payrolled under-25 count
-                </a>{" "}
-                fell {formatCount(Math.abs(rti.payrolled_under_25_change_yoy))} in the
+                  RTI
+                </a>
+                &apos;s payrolled under-25 count fell{" "}
+                {formatCount(Math.abs(rti.payrolled_under_25_change_yoy))} in the
                 year to {rti.period_label}.
               </td>
             </tr>
@@ -187,11 +198,13 @@ export default function BaselineTab({ data }) {
                 mean (implied)
               </td>
               <td>
+                {formatCurrency(ashe.mean_annual_pay_18_21)} (18-21) /{" "}
+                {formatCurrency(ashe.mean_annual_pay_22_29)} (22-29) mean,{" "}
+                {ashe.period_label} (
                 <a href={ashe.source} target="_blank" rel="noreferrer" className="underline">
-                  {formatCurrency(ashe.mean_annual_pay_18_21)} (18-21) /{" "}
-                  {formatCurrency(ashe.mean_annual_pay_22_29)} (22-29) mean,{" "}
-                  {ashe.period_label} (ASHE)
+                  ASHE
                 </a>
+                )
               </td>
               <td>
                 The model&apos;s average NICs saving of{" "}
@@ -213,9 +226,9 @@ export default function BaselineTab({ data }) {
               </td>
               <td>
                 <a href={neet.source} target="_blank" rel="noreferrer" className="underline">
-                  {formatCount(neet.level)} / {formatPct(neet.rate * 100)},{" "}
-                  {neet.period_label} (ONS)
-                </a>
+                  {formatCount(neet.level)}
+                </a>{" "}
+                / {formatPct(neet.rate * 100)}, {neet.period_label} (ONS)
               </td>
               <td>
                 ONS level rose {formatCount(neet.year_on_year_change)} on a year earlier

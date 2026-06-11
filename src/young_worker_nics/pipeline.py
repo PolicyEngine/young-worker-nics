@@ -402,70 +402,46 @@ def run(args: argparse.Namespace) -> None:
     print("Step 9: Writing results JSON...")
     methods = {
         "static": (
-            "For each employed person in PolicyEngine UK's enhanced-FRS microdata, the "
-            "employer NICs forgone equal NICs-liable earnings between the Secondary Threshold "
-            "and the Upper Secondary Threshold (both read from the PolicyEngine parameter "
-            "tree) times the statutory employer rate, summed with survey weights. The marginal "
-            "cost covers employed 21-24-year-olds; the 18-24 headline quantum additionally "
-            "counts under-21s, who are already exempt in law (category M) and carry no "
-            "marginal Exchequer cost."
+            "Per person in PolicyEngine UK's enhanced-FRS microdata: the statutory "
+            "employer rate times NICs-liable earnings between the Secondary and Upper "
+            "Secondary Thresholds (both read from the PolicyEngine parameter tree), "
+            "summed with survey weights. The marginal cost covers employed "
+            "21-24-year-olds; under-21s are already exempt in law (category M)."
         ),
         "pass_through": (
-            "For each pass-through rate s, every employed 21-24-year-old's employment income "
-            "is raised by s times their employer NICs saving and a full PolicyEngine "
-            "microsimulation is re-run on the boosted wages. The fiscal offset is the exact "
-            "simulated change in income tax plus employee NICs plus benefits saved. "
-            "Employer NICs on the wage "
-            "increments are excluded because the reform exempts the relieved band; student "
-            "loan repayments, which also rise with earnings, are conservatively excluded."
+            "For each pass-through rate s, every employed 21-24-year-old's wages rise "
+            "by s times their employer NICs saving and the full microsimulation is "
+            "re-run, so the fiscal offset (income tax, employee NICs, benefits saved) "
+            "is simulated exactly. Student loan repayments are conservatively excluded."
         ),
         "poverty": (
-            "Poverty impacts compare the baseline simulation with each boosted-wage "
-            "simulation on PolicyEngine's before-housing-costs absolute poverty measure: a "
-            "person counts as in poverty if their household's equivalised HBAI net income "
-            "falls below the DWP absolute low-income threshold (CPI-uprated), with "
-            "person-weighted headcounts. Deep poverty uses half that threshold. Because the "
-            "line is an absolute parameter rather than a within-simulation median, it is "
-            "identical in baseline and reform by construction. The zero-pass-through central "
-            "case changes no wages, so it has no poverty impact."
+            "Baseline and boosted-wage simulations compared on PolicyEngine's absolute "
+            "before-housing-costs poverty measure: household equivalised HBAI net "
+            "income against the CPI-uprated DWP threshold, person-weighted headcounts."
         ),
         "distributional": (
-            "Distributional impacts compare household net income between the baseline and "
-            "each boosted-wage simulation. Households are ranked by baseline equivalised "
-            "HBAI net income with person-weighted quantile boundaries (PolicyEngine's "
-            "published convention) into deciles, quintiles or quartiles; the chart shows "
-            "the weighted average change across all households in each group, gainers and "
-            "non-gainers alike. The Gini index is computed over people, each carrying "
-            "their household's equivalised net income, in baseline and reform."
+            "Households ranked by baseline equivalised HBAI net income into "
+            "person-weighted deciles, quintiles or quartiles (PolicyEngine's published "
+            "convention); the chart shows the weighted average net-income change across "
+            "all households in each group, gainers and non-gainers alike."
         ),
         "employment": (
-            "Employment effects apply external labour demand elasticities to the simulated "
-            "percentage fall in total employment cost (gross pay plus employer NICs) for "
-            "employed 21-24-year-olds; new jobs equal the elasticity times the average cost "
-            "wedge times the weighted employee count. This is a partial-equilibrium scenario "
-            "range, not a forecast, and is independent of the pass-through scenarios. "
-            "Elasticity values and citations are in the assumptions block."
+            "External labour demand elasticities applied to the simulated percentage "
+            "fall in total employment cost (gross pay plus employer NICs) for employed "
+            "21-24-year-olds; new jobs equal elasticity times average cost wedge times "
+            "the weighted employee count. A partial-equilibrium scenario range, not a "
+            "forecast."
         ),
         "reform_object": (
-            "As a build-time cross-check, the static cost is recomputed by passing a "
-            "PolicyEngine Reform object that zero-rates employer NICs between the Secondary "
-            "and Upper Secondary Thresholds for ages 18-24, and differencing the simulated "
-            "employer NICs against baseline on the same masks. The build fails if this "
-            "diverges from the direct threshold arithmetic by more than 0.1%."
+            "Build-time cross-check: the static cost is recomputed via a PolicyEngine "
+            "Reform object that zero-rates the relieved band for 18-24s; the build "
+            "fails if it diverges from the threshold arithmetic by more than 0.1%."
         ),
         "reconciliation": (
-            "Every young person is in exactly one of three states: in education, in "
-            "employment, or in neither (NEET). Model counts come from the enhanced FRS: "
-            "'in education' is a current education status other than NOT_IN_EDUCATION, "
-            "'in employment' is any employment income in the year (so working students "
-            "appear in both), and the NEET proxy is people in neither. This proxy differs "
-            "from the ONS LFS measure, which is a point-in-time status that also counts "
-            "training, so the model understates the official NEET level; the model's "
-            "16-24 population also runs below the ONS-implied total because the FRS "
-            "calibration targets broad age bands rather than this age range exactly. The "
-            "NEET figure is who the policy is FOR; the employee figure is who the "
-            "exemption is PAID ON — the gap between them is why much of a blanket "
-            "hiring subsidy goes to employment that would exist anyway."
+            "Enhanced-FRS counts: 'in education' is a current education status, 'in "
+            "employment' is any employment income in the year (working students count "
+            "as both), NEET is neither. The proxy understates the ONS LFS measure, a "
+            "point-in-time survey status that also counts training."
         ),
     }
 

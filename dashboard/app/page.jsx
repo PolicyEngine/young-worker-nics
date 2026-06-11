@@ -78,6 +78,11 @@ function Dashboard() {
       <header className="title-row">
         <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-4 md:px-8">
           <h1>Employer NICs exemption for young workers (18-24)</h1>
+          {data && (
+            <span className="rounded-full border border-white/30 px-3 py-1 text-sm text-white/90">
+              Results for {data.fiscal_year_label}
+            </span>
+          )}
         </div>
       </header>
 
@@ -89,7 +94,8 @@ function Dashboard() {
               PolicyEngine UK
             </a>
             &apos;s microsimulation model to estimate the fiscal cost and employment
-            effects of extending the employer NICs zero rate — which{" "}
+            effects of extending the employer NICs zero rate — which already
+            covers{" "}
             {data ? (
               <a
                 href={data.statutory_unmodelled.under_21_relief.url}
@@ -97,13 +103,14 @@ function Dashboard() {
                 rel="noreferrer"
                 className="underline"
               >
-                already covers under-21s and apprentices under 25
+                under-21s
               </a>
             ) : (
-              "already covers under-21s and apprentices under 25"
+              "under-21s"
             )}{" "}
-            — to all employees aged 18 to 24, up to the Upper Secondary Threshold.
-            The{" "}
+            and apprentices under 25 — to all employees aged 18 to 24, up to the
+            Upper Secondary Threshold, for fiscal year{" "}
+            {data ? data.fiscal_year_label : "…"}. The{" "}
             <TabLink onSelect={() => handleTabChange("reform")}>
               Young-worker NICs exemption
             </TabLink>{" "}

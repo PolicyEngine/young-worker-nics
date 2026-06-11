@@ -8,16 +8,16 @@ earnings up to the Upper Secondary Threshold. Built with the
 [PolicyEngine UK](https://policyengine.org) microsimulation model on the
 enhanced Family Resources Survey.
 
-## Headline results (2026-27 parameters)
+## Headline results (2027-28 parameters)
 
 | Result | Value |
 | --- | --- |
-| Static cost (employed 21-24s, the marginal population) | £7.44bn/year |
-| Employees newly exempt | 2.35m |
-| Average employer NICs forgone per employee | £3,161/year |
-| Net cost at 25% / 60% / 76% wage pass-through | £6.91bn / £6.16bn / £5.82bn |
-| Jobs at demand elasticity −0.15 / −0.31 / −0.50 | +37k / +76k / +122k |
-| Static cost per additional job (central) | ~£98k |
+| Static cost (employed 21-24s, the marginal population) | £7.68bn/year |
+| Employees newly exempt | 2.36m |
+| Average employer NICs forgone per employee | £3,253/year |
+| Net cost at 25% / 60% / 76% wage pass-through | £7.13bn / £6.35bn / £6.00bn |
+| Jobs at demand elasticity −0.15 / −0.31 / −0.50 | +37k / +76k / +123k |
+| Static cost per additional job (central) | ~£101k |
 
 Under-21s are already zero-rated in law, so the Exchequer-relevant cost comes
 from employed 21-24-year-olds. The static cost is validated against a
@@ -25,7 +25,7 @@ PolicyEngine Reform-object simulation at build time (the build fails if they
 diverge by more than 0.1%) and reconciled against official statistics: HMRC
 scores the existing under-21 relief at
 [£1.9bn for 2025-26](https://www.gov.uk/government/statistics/tax-reliefs/tax-relief-statistics-january-2026)
-(the model's 18-20 band is £2.0bn), the LFS counts
+(the model's 18-20 band is £2.1bn), the LFS counts
 [3.44m employed 18-24-year-olds](https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/employmentandemployeetypes/datasets/employmentunemploymentandeconomicinactivitybyagegroupseasonallyadjusteda05sa)
 (the model has 3.2m employees), and the implied mean pay of employed 21-24s
 sits between the
@@ -36,7 +36,7 @@ means for the 18-21 and 22-29 bands.
 
 - **Static cost** — employer NICs forgone on each employed 21-24-year-old:
   the statutory rate times NICable earnings between the Secondary Threshold
-  and the Upper Secondary Threshold (15%, £5,000 and £50,270 for 2026-27, all
+  and the Upper Secondary Threshold (15%, £4,992 and £50,270 for 2027-28, all
   read from the PolicyEngine parameter tree). Breakdowns by income quintile,
   quartile and decile, single year of age, gender and country.
 - **Wage pass-through scenarios** — for each pass-through rate (0%, 25%, 60%,
@@ -82,11 +82,11 @@ source .venv/bin/activate
 uv pip install -e ".[simulation,dev]"
 
 # HUGGING_FACE_TOKEN required for the enhanced-FRS microdata
-python -m young_worker_nics --year 2026
+python -m young_worker_nics --year 2027
 
 # options (defaults shown)
 python -m young_worker_nics \
-  --year 2026 \
+  --year 2027 \
   --pass-through 0 0.25 0.6 0.76 \
   --demand-elasticity-low -0.15 \
   --demand-elasticity-central -0.31 \

@@ -84,22 +84,20 @@ export default function MethodologyTab({ data }) {
           description="Whose pocket does the saving land in?"
         />
         <p className="mb-3 text-slate-700">
-          The OBR assumed the {obr.nics_rise_year} employer NICs <em>rise</em>{" "}
-          would be passed to workers via lower real wages —{" "}
-          {formatPct(obr.initial_pass_through * 100, 0)} in {obr.initial_year_label},
-          rising to{" "}
-          <a href={obr.source} target="_blank" rel="noreferrer" className="underline">
-            {formatPct(obr.medium_term_pass_through * 100, 0)} from{" "}
-            {obr.medium_term_year_label}
-          </a>
-          . But the evidence on <em>age-targeted</em> payroll tax cuts —{" "}
+          The <a href={obr.source} target="_blank" rel="noreferrer" className="underline">OBR</a>{" "}
+          assumed the {obr.nics_rise_year} employer NICs <em>rise</em> would be
+          passed to workers as lower real wages —{" "}
+          {formatPct(obr.initial_pass_through * 100, 0)} in {obr.initial_year_label},{" "}
+          {formatPct(obr.medium_term_pass_through * 100, 0)} from{" "}
+          {obr.medium_term_year_label}. But the{" "}
           <a href={saez.url} target="_blank" rel="noreferrer" className="underline">
-            Sweden&apos;s under-26 cut (Saez, Schoefer &amp; Seim 2019)
+            evidence
           </a>{" "}
-          — found approximately zero pass-through to the targeted workers&apos;
-          own wages: firms kept the windfall and responded on the employment
-          margin instead. Pay-equity norms and the binding National Living Wage
-          make age-specific pay rises unlikely. We therefore present{" "}
+          on <em>age-targeted</em> cuts (Sweden&apos;s under-26 cut; Saez,
+          Schoefer &amp; Seim 2019) found approximately zero pass-through to the
+          targeted workers&apos; own wages — pay-equity norms and the binding
+          National Living Wage make age-specific pay rises unlikely. We
+          therefore present{" "}
           {formatPct(settings.pass_through_scenarios[0] * 100, 0)} as the central
           case with{" "}
           {settings.pass_through_scenarios
@@ -108,20 +106,6 @@ export default function MethodologyTab({ data }) {
             .join(" and ")}{" "}
           as sensitivities.
         </p>
-      </section>
-
-      <section className="section-card">
-        <SectionHeading title="What the model captures" />
-        <ul className="list-disc space-y-1 pl-6 text-slate-700">
-          <li>Statutory employer NICs arithmetic, capped at the Upper Secondary Threshold</li>
-          <li>Restriction to the 21-24 marginal population (under-21s are already exempt)</li>
-          <li>Tax-benefit clawback of passed-through wage gains</li>
-          <li>Scenario-based labour demand responses with literature-supported elasticities</li>
-          <li>
-            Exact tax-benefit interactions for the single-worker calculator,
-            computed through the unified <code>policyengine.py</code> household API
-          </li>
-        </ul>
       </section>
 
       <section className="section-card scroll-mt-24" id="model-omissions">
@@ -196,9 +180,11 @@ export default function MethodologyTab({ data }) {
                 <td>{label}</td>
                 <td>{source.value}</td>
                 <td>
+                  {source.description} (
                   <a href={source.url} target="_blank" rel="noreferrer" className="underline">
-                    {source.description}
+                    source
                   </a>
+                  )
                 </td>
               </tr>
             ))}

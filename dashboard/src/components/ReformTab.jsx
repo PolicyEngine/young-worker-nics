@@ -244,7 +244,6 @@ function StaticView({ data }) {
   const reliefs = data.statutory_unmodelled;
   const hmrc = data.official_stats.hmrc_relief;
   const lfs = data.official_stats.lfs_employment;
-  const ashe = data.official_stats.ashe_earnings;
 
   return (
     <>
@@ -255,16 +254,14 @@ function StaticView({ data }) {
         />
         <div className="grid gap-4 md:grid-cols-3">
           <MetricCard
-            label="Static cost — relieved band for employed 21-24s (under-21s already exempt)"
+            label="Static cost — relieved band for employed 21-24s"
             value={formatBn(staticResults.marginal_cost_bn)}
             note={
               <>
-                Compare: HMRC scores the existing under-21 zero rate at{" "}
-                <SourceLink href={hmrc.source}>
-                  {formatBn(hmrc.under_21_relief_forecast_2025_26_bn)} for{" "}
-                  {hmrc.forecast_period_label}
-                </SourceLink>
-                .
+                Compare: <SourceLink href={hmrc.source}>HMRC</SourceLink>{" "}
+                scores the existing under-21 zero rate at{" "}
+                {formatBn(hmrc.under_21_relief_forecast_2025_26_bn)} for{" "}
+                {hmrc.forecast_period_label}.
               </>
             }
           />
@@ -273,29 +270,16 @@ function StaticView({ data }) {
             value={formatCount(staticResults.n_marginal_employees)}
             note={
               <>
-                Compare:{" "}
-                <SourceLink href={lfs.source}>
-                  {formatCount(lfs.employment_18_24)} 18-24-year-olds in
-                  employment, {lfs.period_label} (ONS LFS)
-                </SourceLink>
-                , which includes the self-employed and 18-20-year-olds.
+                Compare: {formatCount(lfs.employment_18_24)} 18-24-year-olds in
+                employment, {lfs.period_label} (ONS{" "}
+                <SourceLink href={lfs.source}>LFS</SourceLink>), which includes
+                the self-employed and 18-20-year-olds.
               </>
             }
           />
           <MetricCard
             label="Average employer NICs saving per newly exempt employee"
             value={formatCurrency(staticResults.avg_saving_per_employee)}
-            note={
-              <>
-                Compare:{" "}
-                <SourceLink href={ashe.source}>
-                  ASHE all-employee mean pay of{" "}
-                  {formatCurrency(ashe.mean_annual_pay_18_21)} (18-21) and{" "}
-                  {formatCurrency(ashe.mean_annual_pay_22_29)} (22-29)
-                </SourceLink>
-                .
-              </>
-            }
           />
         </div>
       </section>
@@ -359,14 +343,18 @@ function StaticView({ data }) {
             </tr>
           </tbody>
         </table>
-        <p className="mt-2 text-xs text-slate-500">
-          * Not captured in the model: PolicyEngine UK defines an apprentice
-          flag, but the Family Resources Survey microdata behind it records
-          no apprenticeship status, so the flag is false for every person
-          and apprentices cannot be separated from other employees. Their
-          relief is existing law and is not counted in the reform&apos;s
-          cost.
-        </p>
+        <details className="mt-2 text-xs text-slate-500">
+          <summary className="cursor-pointer">
+            * Why apprentices are not separated out in the model
+          </summary>
+          <p className="mt-1">
+            PolicyEngine UK defines an apprentice flag, but the Family
+            Resources Survey microdata behind it records no apprenticeship
+            status, so the flag is false for every person and apprentices
+            cannot be separated from other employees. Their relief is existing
+            law and is not counted in the reform&apos;s cost.
+          </p>
+        </details>
       </section>
 
       <section className="section-card">
@@ -448,17 +436,16 @@ function BehaviouralView({ data }) {
               {formatBn(passThrough[0].gross_cost_bn)} gross figure. Each
               scenario below re-runs the full microsimulation with wages boosted
               by that share of the saving. The default selection,{" "}
-              {formatPct(obr.medium_term_pass_through * 100, 0)}, is the{" "}
-              <SourceLink href={obr.source}>
-                OBR&apos;s medium-term incidence assumption
-              </SourceLink>{" "}
-              for the {obr.nics_rise_year} employer NICs rise (
+              {formatPct(obr.medium_term_pass_through * 100, 0)}, is the
+              medium-term incidence assumption of the{" "}
+              <SourceLink href={obr.source}>OBR</SourceLink> for the{" "}
+              {obr.nics_rise_year} employer NICs rise (
               {formatPct(obr.initial_pass_through * 100, 0)} in its first year);
-              the age-targeted evidence (
+              the age-targeted{" "}
               <SourceLink href={data.assumptions.pass_through_scenarios[0].url}>
-                Saez, Schoefer &amp; Seim 2019
-              </SourceLink>
-              ) supports the lower{" "}
+                evidence
+              </SourceLink>{" "}
+              (Saez, Schoefer &amp; Seim 2019) supports the lower{" "}
               {formatPct(data.settings.pass_through_scenarios[1] * 100, 0)}.
             </>
           }
@@ -497,7 +484,7 @@ function BehaviouralView({ data }) {
       <section className="section-card">
         <SectionHeading
           title="Net Exchequer cost by pass-through rate"
-          description="Each row is a full microsimulation run. The more of the saving that reaches wages, the more flows back in tax and withdrawn benefits, and the lower the net cost. The bold row is the scenario selected above."
+          description={`Each row is a full microsimulation run for ${data.fiscal_year_label}. The more of the saving that reaches wages, the more flows back in tax and withdrawn benefits, and the lower the net cost. The bold row is the scenario selected above.`}
         />
         <table className="data-table">
           <thead>
@@ -686,14 +673,14 @@ function BehaviouralView({ data }) {
               rather than adding together. The elasticity arithmetic leaves out
               substitution from workers just outside the age band, wider
               economy-wide responses, and differences between the Swedish
-              setting it was estimated in and the UK (see{" "}
+              setting it was estimated in and the UK (see the{" "}
               <Link
                 href="/?tab=methodology#model-omissions"
                 className="underline"
               >
-                what the model omits
-              </Link>
-              ); the job numbers are scenario arithmetic, not a forecast.
+                omissions
+              </Link>{" "}
+              list); the job numbers are scenario arithmetic, not a forecast.
             </>
           }
         />
@@ -705,15 +692,16 @@ function BehaviouralView({ data }) {
           description={
             <>
               Employment gain among treated 21-24-year-olds from the fall in
-              employment costs, across demand elasticity scenarios (
+              employment costs, across demand elasticity scenarios (Egebark
+              &amp; Kaunitz 2018:{" "}
               <SourceLink href={evidence.egebark_kaunitz_url}>
-                Egebark &amp; Kaunitz 2018
+                {evidence.egebark_kaunitz_2018}
               </SourceLink>
-              : {evidence.egebark_kaunitz_2018};{" "}
+              ; Lichter et al. 2015 meta-analysis:{" "}
               <SourceLink href={evidence.lichter_url}>
-                Lichter et al. 2015 meta-analysis
+                {evidence.lichter_2015_meta}
               </SourceLink>
-              : {evidence.lichter_2015_meta}). In the Swedish evidence, most of
+              ). In the Swedish evidence, most of
               the fiscal cost subsidised jobs that would have existed anyway, at
               roughly {evidence.egebark_kaunitz_cost_per_job_multiple} times the
               direct cost of employing a young worker per additional job.
@@ -723,16 +711,16 @@ function BehaviouralView({ data }) {
                   The OBR publishes no youth-specific demand elasticity; for
                   the {data.official_stats.obr.nics_rise_year} employer NICs
                   rise it judged that labour supply would fall by around{" "}
-                  {formatCount(
-                    Math.abs(
-                      data.official_stats.obr_nics_rise
-                        .labour_supply_effect_hours_equivalents
-                    )
-                  )}{" "}
                   <SourceLink href={data.official_stats.obr_nics_rise.source}>
-                    average-hours equivalents
-                  </SourceLink>
-                  , the same cost channel in the opposite direction.
+                    {formatCount(
+                      Math.abs(
+                        data.official_stats.obr_nics_rise
+                          .labour_supply_effect_hours_equivalents
+                      )
+                    )}
+                  </SourceLink>{" "}
+                  average-hours equivalents, the same cost channel in the
+                  opposite direction.
                 </>
               )}
             </>
@@ -768,14 +756,9 @@ function BehaviouralView({ data }) {
                 },
               ].map((col) => (
                 <th key={col.label}>
-                  <span
-                    title={col.tip}
-                    className="cursor-help border-b border-dotted border-slate-400"
-                  >
-                    {col.label}
-                  </span>{" "}
-                  <span className="text-slate-400" title={col.tip} aria-hidden>
-                    &#9432;
+                  {col.label}{" "}
+                  <span className="info-tip" tabIndex={0}>
+                    i<span className="info-tip-bubble">{col.tip}</span>
                   </span>
                 </th>
               ))}
