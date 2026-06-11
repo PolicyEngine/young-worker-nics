@@ -247,47 +247,18 @@ function StaticView({ data }) {
 
   return (
     <>
-      <section className="section-card">
+      <div className="pt-2">
         <SectionHeading
-          title="Headline static results"
-          description={`First-year cost of the zero rate with no behavioural response: employer NICs at ${rate} on earnings between the Secondary and Upper Secondary Thresholds, summed over employed 21-24-year-olds in the PolicyEngine UK enhanced FRS (${data.fiscal_year_label} parameters). Under-21s are already exempt in law, so they add nothing to the marginal cost. Each card notes the nearest official benchmark.`}
+          size="lg"
+          title="The policy — what switches off, and for whom"
+          description={`Employers currently pay NICs at ${rate} on each employee's earnings above the Secondary Threshold (${formatCurrency(params.secondary_threshold_annual)}/year). The reform switches that charge off for all employees aged 18-24 on earnings up to the Upper Secondary Threshold (${formatCurrency(params.upper_secondary_threshold_annual)}/year) — the same design as the existing zero rates for under-21s and apprentices under 25, extended to the whole age group. Nothing changes for the worker's own NICs or take-home pay; the saving goes to the employer.`}
         />
-        <div className="grid gap-4 md:grid-cols-3">
-          <MetricCard
-            label="Static cost — relieved band for employed 21-24s"
-            value={formatBn(staticResults.marginal_cost_bn)}
-            note={
-              <>
-                Compare: <SourceLink href={hmrc.source}>HMRC</SourceLink>{" "}
-                scores the existing under-21 zero rate at{" "}
-                {formatBn(hmrc.under_21_relief_forecast_2025_26_bn)} for{" "}
-                {hmrc.forecast_period_label}.
-              </>
-            }
-          />
-          <MetricCard
-            label="Employees newly exempt — employed 21-24-year-olds"
-            value={formatCount(staticResults.n_marginal_employees)}
-            note={
-              <>
-                Compare: {formatCount(lfs.employment_18_24)} 18-24-year-olds in
-                employment, {lfs.period_label} (ONS{" "}
-                <SourceLink href={lfs.source}>LFS</SourceLink>), which includes
-                the self-employed and 18-20-year-olds.
-              </>
-            }
-          />
-          <MetricCard
-            label="Average employer NICs saving per newly exempt employee"
-            value={formatCurrency(staticResults.avg_saving_per_employee)}
-          />
-        </div>
-      </section>
+      </div>
 
       <section className="section-card">
         <SectionHeading
-          title="The policy change, group by group"
-          description={`Employers currently pay NICs at ${rate} on each employee's earnings above the Secondary Threshold (${formatCurrency(params.secondary_threshold_annual)}/year). The reform switches that charge off for all employees aged 18-24 on earnings up to the Upper Secondary Threshold (${formatCurrency(params.upper_secondary_threshold_annual)}/year) — the same design as the existing zero rates for under-21s and apprentices under 25, extended to the whole age group. Nothing changes for the worker's own NICs or take-home pay; the saving goes to the employer. The table shows what changes for each employee group.`}
+          title="What changes, group by group"
+          description="The bold row is the only change; every other group keeps its current treatment."
         />
         <table className="data-table">
           <thead>
@@ -357,9 +328,54 @@ function StaticView({ data }) {
         </details>
       </section>
 
+      <div className="pt-2">
+        <SectionHeading
+          size="lg"
+          title="Static cost — what the Exchequer forgoes before any response"
+          description={`Static means wages, employment and behaviour are held fixed: the cost is simply the employer NICs no longer charged in ${data.fiscal_year_label}, computed person by person on the PolicyEngine UK enhanced FRS. Under-21s are already exempt in law, so the marginal cost comes from employed 21-24-year-olds. What happens when employers respond is in the Population (behavioural) view.`}
+        />
+      </div>
+
       <section className="section-card">
         <SectionHeading
-          title="Detailed breakdown (static)"
+          title="Headline results"
+          description="Each card notes the nearest official benchmark."
+        />
+        <div className="grid gap-4 md:grid-cols-3">
+          <MetricCard
+            label="Static cost — relieved band for employed 21-24s"
+            value={formatBn(staticResults.marginal_cost_bn)}
+            note={
+              <>
+                Compare: <SourceLink href={hmrc.source}>HMRC</SourceLink>{" "}
+                scores the existing under-21 zero rate at{" "}
+                {formatBn(hmrc.under_21_relief_forecast_2025_26_bn)} for{" "}
+                {hmrc.forecast_period_label}.
+              </>
+            }
+          />
+          <MetricCard
+            label="Employees newly exempt — employed 21-24-year-olds"
+            value={formatCount(staticResults.n_marginal_employees)}
+            note={
+              <>
+                Compare: {formatCount(lfs.employment_18_24)} 18-24-year-olds in
+                employment, {lfs.period_label} (ONS{" "}
+                <SourceLink href={lfs.source}>LFS</SourceLink>), which includes
+                the self-employed and 18-20-year-olds.
+              </>
+            }
+          />
+          <MetricCard
+            label="Average employer NICs saving per newly exempt employee"
+            value={formatCurrency(staticResults.avg_saving_per_employee)}
+          />
+        </div>
+      </section>
+
+      <section className="section-card">
+        <SectionHeading
+          title="Detailed breakdown"
           description={`Employer NICs forgone in the relieved band across all 18-24-year-old employees, split by group. Group totals sum to the full 18-24 quantum of ${formatBn(staticResults.headline_quantum_bn)} — larger than the ${formatBn(staticResults.marginal_cost_bn)} headline cost because they include 18-20-year-olds, whose relief is already law.${dimension === "by_age" ? ` ${data.age_band_note}` : ""}`}
         />
         <div className="mb-4 flex flex-wrap gap-2">
