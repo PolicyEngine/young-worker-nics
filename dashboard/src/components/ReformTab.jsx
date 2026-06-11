@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   Bar,
   BarChart,
@@ -27,7 +28,7 @@ import {
   getStatic,
 } from "../lib/dataHelpers";
 import ChartLogo from "./ChartLogo";
-import MethodNote from "./MethodNote";
+import MethodologyLink from "./MethodologyLink";
 import SectionHeading from "./SectionHeading";
 
 const AXIS_STYLE = { fontSize: 12, fill: colors.gray[500] };
@@ -49,15 +50,16 @@ const DIMENSIONS = [
   { id: "by_country", label: "Country" },
 ];
 
-function MetricCard({ label, value, caption, compare }) {
+function MetricCard({ label, value, note }) {
   return (
     <div className="metric-card">
-      <p className="text-xs uppercase tracking-[0.08em] text-slate-500">{label}</p>
-      <p className="text-3xl font-bold">{value}</p>
-      {caption && <p className="text-sm text-slate-500">{caption}</p>}
-      {compare && (
-        <p className="mt-2 border-t border-slate-100 pt-2 text-xs text-slate-500">
-          {compare}
+      <p className="text-sm font-semibold leading-snug text-slate-700">
+        {label}
+      </p>
+      <p className="mt-1 text-3xl font-bold">{value}</p>
+      {note && (
+        <p className="mt-2 border-t border-slate-100 pt-2 text-xs leading-5 text-slate-500">
+          {note}
         </p>
       )}
     </div>
@@ -226,25 +228,6 @@ function HouseholdView({ data }) {
   );
 }
 
-function Expandable({ label, children }) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <div className="note-card mt-4 rounded-r-xl p-4">
-      <button
-        type="button"
-        className="flex w-full items-center justify-between gap-2 text-left"
-        onClick={() => setOpen(!open)}
-        aria-expanded={open}
-      >
-        <span className="eyebrow note-eyebrow">{label}</span>
-        <span className="eyebrow note-eyebrow">{open ? "Hide" : "Show"}</span>
-      </button>
-      {open && <div className="mt-3">{children}</div>}
-    </div>
-  );
-}
-
 function SourceLink({ href, children }) {
   return (
     <a href={href} target="_blank" rel="noreferrer" className="underline">
@@ -263,42 +246,33 @@ function StaticView({ data }) {
   const hmrc = data.official_stats.hmrc_relief;
   const lfs = data.official_stats.lfs_employment;
   const ashe = data.official_stats.ashe_earnings;
-  const obrRise = data.official_stats.obr_nics_rise;
-  const impliedPay =
-    params.secondary_threshold_annual +
-    staticResults.avg_saving_per_employee / params.employer_rate;
 
   return (
     <>
-      <div className="mb-6">
+      <section className="section-card">
+        <SectionHeading
+          title="Headline static results"
+          description={`First-year cost of the zero rate with no behavioural response: employer NICs at ${rate} on earnings between the Secondary and Upper Secondary Thresholds, summed over employed 21-24-year-olds in the PolicyEngine UK enhanced FRS (${data.fiscal_year_label} parameters). Under-21s are already exempt in law, so they add nothing to the marginal cost. Each card notes the nearest official benchmark.`}
+        />
         <div className="grid gap-4 md:grid-cols-3">
           <MetricCard
-            label="Static cost (21-24, marginal)"
+            label="Static cost — relieved band for employed 21-24s (under-21s already exempt)"
             value={formatBn(staticResults.marginal_cost_bn)}
-            caption="Relieved band for employed 21-24s; under-21s are already exempt"
-            compare={
-              obrRise && (
-                <>
-                  Compare: the April 2025 employer NICs rise raises{" "}
-                  <SourceLink href={obrRise.source}>
-                    {formatBn(obrRise.static_yield_2026_27_bn)} static in
-                    2026-27 (OBR)
-                  </SourceLink>
-                  ; HMRC scores the existing under-21 zero rate at{" "}
-                  <SourceLink href={hmrc.source}>
-                    {formatBn(hmrc.under_21_relief_forecast_2025_26_bn)} for{" "}
-                    {hmrc.forecast_period_label}
-                  </SourceLink>
-                  .
-                </>
-              )
+            note={
+              <>
+                Compare: HMRC scores the existing under-21 zero rate at{" "}
+                <SourceLink href={hmrc.source}>
+                  {formatBn(hmrc.under_21_relief_forecast_2025_26_bn)} for{" "}
+                  {hmrc.forecast_period_label}
+                </SourceLink>
+                .
+              </>
             }
           />
           <MetricCard
-            label="Employees newly exempt"
+            label="Employees newly exempt — employed 21-24-year-olds"
             value={formatCount(staticResults.n_marginal_employees)}
-            caption="Employed 21-24-year-olds"
-            compare={
+            note={
               <>
                 Compare:{" "}
                 <SourceLink href={lfs.source}>
@@ -310,15 +284,13 @@ function StaticView({ data }) {
             }
           />
           <MetricCard
-            label="Average saving per employee"
+            label="Average employer NICs saving per newly exempt employee"
             value={formatCurrency(staticResults.avg_saving_per_employee)}
-            caption="Employer NICs forgone per newly exempt employee"
-            compare={
+            note={
               <>
-                Implies mean pay of about {formatCurrency(impliedPay)} —
-                between{" "}
+                Compare:{" "}
                 <SourceLink href={ashe.source}>
-                  ASHE all-employee means of{" "}
+                  ASHE all-employee mean pay of{" "}
                   {formatCurrency(ashe.mean_annual_pay_18_21)} (18-21) and{" "}
                   {formatCurrency(ashe.mean_annual_pay_22_29)} (22-29)
                 </SourceLink>
@@ -327,16 +299,15 @@ function StaticView({ data }) {
             }
           />
         </div>
-        <MethodNote text={data.methods.static} />
-      </div>
+        <MethodologyLink anchor="static" />
+      </section>
 
       <section className="section-card">
         <SectionHeading
-          title="The policy change"
-          description={`Employers currently pay NICs at ${rate} on each employee's earnings above the Secondary Threshold (${formatCurrency(params.secondary_threshold_annual)}/year). The reform switches that charge off for all employees aged 18-24 on earnings up to the Upper Secondary Threshold (${formatCurrency(params.upper_secondary_threshold_annual)}/year) — the same design as the existing zero rates for under-21s and apprentices under 25, extended to the whole age group. Nothing changes for the worker's own NICs or take-home pay; the saving goes to the employer.`}
+          title="The policy change, group by group"
+          description={`Employers currently pay NICs at ${rate} on each employee's earnings above the Secondary Threshold (${formatCurrency(params.secondary_threshold_annual)}/year). The reform switches that charge off for all employees aged 18-24 on earnings up to the Upper Secondary Threshold (${formatCurrency(params.upper_secondary_threshold_annual)}/year) — the same design as the existing zero rates for under-21s and apprentices under 25, extended to the whole age group. Nothing changes for the worker's own NICs or take-home pay; the saving goes to the employer. The table shows what changes for each employee group.`}
         />
-        <Expandable label="What changes, group by group">
-          <table className="data-table">
+        <table className="data-table">
           <thead>
             <tr>
               <th>Employee group</th>
@@ -390,21 +361,20 @@ function StaticView({ data }) {
             </tr>
           </tbody>
         </table>
-          <p className="mt-2 text-xs text-slate-500">
-            * Not captured in the model: PolicyEngine UK defines an apprentice
-            flag, but the Family Resources Survey microdata behind it records
-            no apprenticeship status, so the flag is false for every person
-            and apprentices cannot be separated from other employees. Their
-            relief is existing law and is not counted in the reform&apos;s
-            cost.
-          </p>
-        </Expandable>
+        <p className="mt-2 text-xs text-slate-500">
+          * Not captured in the model: PolicyEngine UK defines an apprentice
+          flag, but the Family Resources Survey microdata behind it records
+          no apprenticeship status, so the flag is false for every person
+          and apprentices cannot be separated from other employees. Their
+          relief is existing law and is not counted in the reform&apos;s
+          cost.
+        </p>
       </section>
 
       <section className="section-card">
         <SectionHeading
           title="Detailed breakdown (static)"
-          description={`Employer NICs forgone across all 18-24-year-old employees, by group.${dimension === "by_age" ? ` ${data.age_band_note}` : ""}`}
+          description={`Employer NICs forgone in the relieved band across all 18-24-year-old employees, split by group. Group totals sum to the full 18-24 quantum of ${formatBn(staticResults.headline_quantum_bn)} — larger than the ${formatBn(staticResults.marginal_cost_bn)} headline cost because they include 18-20-year-olds, whose relief is already law.${dimension === "by_age" ? ` ${data.age_band_note}` : ""}`}
         />
         <div className="mb-4 flex flex-wrap gap-2">
           {DIMENSIONS.map((d) => (
@@ -439,18 +409,9 @@ function StaticView({ data }) {
           </ResponsiveContainer>
         </div>
         <ChartLogo />
-        <MethodNote text={data.methods.static} />
+        <MethodologyLink anchor="static" />
       </section>
     </>
-  );
-}
-
-function SectionIntro({ title, children }) {
-  return (
-    <div className="pt-2">
-      <h2 className="text-xl font-bold text-slate-900">{title}</h2>
-      <p className="mt-1 text-sm text-slate-600">{children}</p>
-    </div>
   );
 }
 
@@ -459,7 +420,6 @@ function BehaviouralView({ data }) {
   const employment = getEmploymentScenarios(data);
   const obr = data.official_stats.obr;
   const evidence = data.official_stats.elasticity_evidence;
-  const methods = data.methods;
   const [scenarioRate, setScenarioRate] = useState(
     (
       passThrough.find(
@@ -476,38 +436,37 @@ function BehaviouralView({ data }) {
 
   return (
     <>
-      <SectionIntro title="1. Wage pass-through — who keeps the employer's saving?">
-        The exemption is paid to employers, so the first behavioural question is
-        what they do with the saving. Whatever share they pass to young workers
-        as higher wages determines both who benefits and what the policy
-        costs: passed-through wages are partly clawed back by the Exchequer
-        through income tax, employee NICs and benefit withdrawal, shrinking the
-        net cost below the {formatBn(passThrough[0].gross_cost_bn)} gross
-        figure. Each scenario below re-runs the full microsimulation with wages
-        boosted by that share of the saving. The default selection,{" "}
-        {formatPct(obr.medium_term_pass_through * 100, 0)}, is the{" "}
-        <a
-          href={obr.source}
-          target="_blank"
-          rel="noreferrer"
-          className="underline"
-        >
-          OBR&apos;s medium-term incidence assumption
-        </a>{" "}
-        for the {obr.nics_rise_year} employer NICs rise (
-        {formatPct(obr.initial_pass_through * 100, 0)} in its first year); the
-        age-targeted evidence (
-        <a
-          href={data.assumptions.pass_through_scenarios[0].url}
-          target="_blank"
-          rel="noreferrer"
-          className="underline"
-        >
-          Saez, Schoefer &amp; Seim 2019
-        </a>
-        ) supports the lower{" "}
-        {formatPct(data.settings.pass_through_scenarios[1] * 100, 0)}.
-      </SectionIntro>
+      <div className="pt-2">
+        <SectionHeading
+          size="lg"
+          title="Wage pass-through — who keeps the employer's saving?"
+          description={
+            <>
+              The exemption is paid to employers, so the first behavioural
+              question is what they do with the saving. Whatever share they pass
+              to young workers as higher wages determines both who benefits and
+              what the policy costs: passed-through wages are partly clawed back
+              by the Exchequer through income tax, employee NICs and benefit
+              withdrawal, shrinking the net cost below the{" "}
+              {formatBn(passThrough[0].gross_cost_bn)} gross figure. Each
+              scenario below re-runs the full microsimulation with wages boosted
+              by that share of the saving. The default selection,{" "}
+              {formatPct(obr.medium_term_pass_through * 100, 0)}, is the{" "}
+              <SourceLink href={obr.source}>
+                OBR&apos;s medium-term incidence assumption
+              </SourceLink>{" "}
+              for the {obr.nics_rise_year} employer NICs rise (
+              {formatPct(obr.initial_pass_through * 100, 0)} in its first year);
+              the age-targeted evidence (
+              <SourceLink href={data.assumptions.pass_through_scenarios[0].url}>
+                Saez, Schoefer &amp; Seim 2019
+              </SourceLink>
+              ) supports the lower{" "}
+              {formatPct(data.settings.pass_through_scenarios[1] * 100, 0)}.
+            </>
+          }
+        />
+      </div>
 
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
@@ -540,8 +499,8 @@ function BehaviouralView({ data }) {
 
       <section className="section-card">
         <SectionHeading
-          title="1.1 Net Exchequer cost by pass-through rate"
-          description="The more of the saving that reaches wages, the more flows back in tax and withdrawn benefits, and the lower the net cost."
+          title="Net Exchequer cost by pass-through rate"
+          description="Each row is a full microsimulation run. The more of the saving that reaches wages, the more flows back in tax and withdrawn benefits, and the lower the net cost. The bold row is the scenario selected above."
         />
         <table className="data-table">
           <thead>
@@ -570,12 +529,12 @@ function BehaviouralView({ data }) {
             ))}
           </tbody>
         </table>
-        <MethodNote text={methods.pass_through} />
+        <MethodologyLink anchor="pass_through" />
       </section>
 
       <section className="section-card">
         <SectionHeading
-          title="1.2 Where the offset comes from"
+          title="Where the offset comes from"
           description={`Decomposition of the fiscal offset under the selected ${formatPct(scenario.pass_through_rate * 100, 0)} pass-through scenario. With zero pass-through no saving reaches workers' pay, so there is no offset, poverty or distributional effect to show — those results exist only for the scenarios with positive pass-through.`}
         />
         {scenario.pass_through_rate > 0 && (
@@ -626,7 +585,7 @@ function BehaviouralView({ data }) {
                 </tr>
               </tbody>
             </table>
-            <MethodNote text={methods.pass_through} />
+            <MethodologyLink anchor="pass_through" />
           </>
         )}
       </section>
@@ -634,34 +593,32 @@ function BehaviouralView({ data }) {
       {scenario.pass_through_rate > 0 && (
         <section className="section-card">
           <SectionHeading
-            title="1.3 Poverty impact"
-            description={`Absolute poverty before housing costs under the ${formatPct(scenario.pass_through_rate * 100, 0)} pass-through scenario, baseline versus reform.`}
+            title="Poverty impact"
+            description={`Absolute poverty before housing costs under the ${formatPct(scenario.pass_through_rate * 100, 0)} pass-through scenario, baseline versus reform. Poverty is measured on household income, so people who share a household with a young worker whose pay rises can move out of poverty too.`}
           />
           <div className="grid gap-4 md:grid-cols-3">
             <MetricCard
-              label="Poverty rate change, all people"
+              label="Poverty rate change, all people (absolute, before housing costs)"
               value={`${((scenario.poverty.reformed_rate_bhc - scenario.poverty.baseline_rate_bhc) * 100).toFixed(2)}pp`}
-              caption="Absolute poverty, before housing costs"
             />
             <MetricCard
-              label="Poverty rate change, 18-24"
+              label="Poverty rate change, 18-24 (absolute, before housing costs)"
               value={`${((scenario.poverty.reformed_rate_bhc_18_24 - scenario.poverty.baseline_rate_bhc_18_24) * 100).toFixed(2)}pp`}
-              caption="Absolute poverty, before housing costs"
             />
             <MetricCard
               label="People lifted out of poverty"
               value={formatCount(scenario.poverty.people_lifted)}
-              caption={`${formatCount(scenario.poverty.people_lifted_18_24)} are themselves aged 18-24; the rest share a household with a young worker whose pay rises (poverty is measured on household income)`}
+              note={`${formatCount(scenario.poverty.people_lifted_18_24)} are themselves aged 18-24; the rest share a household with a young worker whose pay rises.`}
             />
           </div>
-          <MethodNote text={methods.poverty} />
+          <MethodologyLink anchor="poverty" />
         </section>
       )}
 
       {scenario.pass_through_rate > 0 && (
         <section className="section-card">
           <SectionHeading
-            title="1.4 Average household net income change"
+            title="Average household net income change"
             description={`Weighted average change in household net income under the ${formatPct(scenario.pass_through_rate * 100, 0)} pass-through scenario, across all households in each baseline income group (gainers and non-gainers alike).`}
           />
           <div className="mb-4 flex flex-wrap gap-2">
@@ -715,53 +672,54 @@ function BehaviouralView({ data }) {
             </ResponsiveContainer>
           </div>
           <ChartLogo />
-          <MethodNote text={methods.distributional} />
+          <MethodologyLink anchor="distributional" />
         </section>
       )}
 
-      <SectionIntro title="2. Labour demand response — does cheaper hiring create jobs?">
-        Pass-through decides who keeps the money; the demand response asks
-        whether cheaper youth labour changes hiring. Whatever employers do not
-        pass on lowers the total cost of employing a 21-24-year-old, and the
-        youth payroll-tax literature provides demand elasticities that
-        translate that cost fall into additional jobs. The two channels trade
-        off against each other — money passed to wages cannot also cut
-        employment costs — so this section and the previous one bracket the
-        policy&apos;s possible effects rather than adding together. The
-        elasticity assumption leaves several things out: substitution between
-        workers, where some hiring of 21-24-year-olds replaces workers just
-        outside the age band rather than adding jobs; wider price, profit and
-        output responses across the economy; differences between the Swedish
-        labour market the elasticities were estimated in and the UK, including
-        the National Living Wage; and the hours and quality of the jobs
-        created. The job numbers below are therefore scenario arithmetic, not
-        a forecast.
-      </SectionIntro>
+      <div className="pt-2">
+        <SectionHeading
+          size="lg"
+          title="Labour demand response — does cheaper hiring create jobs?"
+          description={
+            <>
+              Pass-through decides who keeps the money; the demand response asks
+              whether cheaper youth labour changes hiring. Whatever employers do
+              not pass on lowers the total cost of employing a 21-24-year-old,
+              and the youth payroll-tax literature provides demand elasticities
+              that translate that cost fall into additional jobs. The two
+              channels trade off against each other — money passed to wages
+              cannot also cut employment costs — so this section and the
+              pass-through section bracket the policy&apos;s possible effects
+              rather than adding together. The elasticity arithmetic leaves out
+              substitution from workers just outside the age band, wider
+              economy-wide responses, and differences between the Swedish
+              setting it was estimated in and the UK (see{" "}
+              <Link
+                href="/?tab=methodology#model-omissions"
+                className="underline"
+              >
+                what the model omits
+              </Link>
+              ); the job numbers are scenario arithmetic, not a forecast.
+            </>
+          }
+        />
+      </div>
 
       <section className="section-card">
         <SectionHeading
-          title="2.1 Employment effect by demand elasticity"
+          title="Employment effect by demand elasticity"
           description={
             <>
               Employment gain among treated 21-24-year-olds from the fall in
               employment costs, across demand elasticity scenarios (
-              <a
-                href={evidence.egebark_kaunitz_url}
-                target="_blank"
-                rel="noreferrer"
-                className="underline"
-              >
+              <SourceLink href={evidence.egebark_kaunitz_url}>
                 Egebark &amp; Kaunitz 2018
-              </a>
+              </SourceLink>
               : {evidence.egebark_kaunitz_2018};{" "}
-              <a
-                href={evidence.lichter_url}
-                target="_blank"
-                rel="noreferrer"
-                className="underline"
-              >
+              <SourceLink href={evidence.lichter_url}>
                 Lichter et al. 2015 meta-analysis
-              </a>
+              </SourceLink>
               : {evidence.lichter_2015_meta}). In the Swedish evidence, most of
               the fiscal cost subsidised jobs that would have existed anyway, at
               roughly {evidence.egebark_kaunitz_cost_per_job_multiple} times the
@@ -778,14 +736,9 @@ function BehaviouralView({ data }) {
                         .labour_supply_effect_hours_equivalents
                     )
                   )}{" "}
-                  <a
-                    href={data.official_stats.obr_nics_rise.source}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="underline"
-                  >
+                  <SourceLink href={data.official_stats.obr_nics_rise.source}>
                     average-hours equivalents
-                  </a>
+                  </SourceLink>
                   , the same cost channel in the opposite direction.
                 </>
               )}
@@ -848,7 +801,7 @@ function BehaviouralView({ data }) {
             ))}
           </tbody>
         </table>
-        <MethodNote text={methods.employment} />
+        <MethodologyLink anchor="employment" />
       </section>
     </>
   );

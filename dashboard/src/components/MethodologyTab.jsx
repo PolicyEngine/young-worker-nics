@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { formatCurrency, formatPct } from "../lib/formatters";
 import SectionHeading from "./SectionHeading";
 
@@ -14,6 +15,16 @@ const METHOD_LABELS = {
 };
 
 export default function MethodologyTab({ data }) {
+  // Analysis sections link here with /?tab=methodology#method-<key>; the tab
+  // mounts after navigation, so the browser's native hash scroll has already
+  // missed and we replay it.
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash) {
+      document.getElementById(hash.slice(1))?.scrollIntoView();
+    }
+  }, []);
+
   const settings = data.settings;
   const obr = data.official_stats.obr;
   const saez = data.assumptions.pass_through_scenarios[0];
@@ -55,11 +66,11 @@ export default function MethodologyTab({ data }) {
       <section className="section-card">
         <SectionHeading
           title="How each result is computed"
-          description="Method explainers written by the analysis pipeline alongside the results, reproduced verbatim. The same notes appear under each section of the Reform tab."
+          description="Method explainers written by the analysis pipeline alongside the results, reproduced verbatim. Each section of the analysis links to its entry here."
         />
         <dl className="space-y-4">
           {Object.entries(data.methods).map(([key, text]) => (
-            <div key={key}>
+            <div key={key} id={`method-${key}`} className="scroll-mt-24">
               <dt className="eyebrow text-slate-500">{METHOD_LABELS[key]}</dt>
               <dd className="mt-1 text-sm leading-6 text-slate-700">{text}</dd>
             </div>
@@ -113,7 +124,7 @@ export default function MethodologyTab({ data }) {
         </ul>
       </section>
 
-      <section className="section-card">
+      <section className="section-card scroll-mt-24" id="model-omissions">
         <SectionHeading title="What the model omits" />
         <ul className="list-disc space-y-1 pl-6 text-slate-700">
           <li>

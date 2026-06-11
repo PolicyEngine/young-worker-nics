@@ -2,7 +2,7 @@
 
 import { formatBn, formatCount, formatCurrency, formatPct } from "../lib/formatters";
 import { getBaseline, getNicsParameters } from "../lib/dataHelpers";
-import MethodNote from "./MethodNote";
+import MethodologyLink from "./MethodologyLink";
 import SectionHeading from "./SectionHeading";
 
 export default function BaselineTab({ data }) {
@@ -79,7 +79,7 @@ export default function BaselineTab({ data }) {
             </tr>
           </tbody>
         </table>
-        <MethodNote text={data.methods.reconciliation} />
+        <MethodologyLink anchor="reconciliation" />
       </section>
 
       <section className="section-card">
@@ -118,7 +118,7 @@ export default function BaselineTab({ data }) {
             </tr>
           </tbody>
         </table>
-        <MethodNote text={data.methods.static} />
+        <MethodologyLink anchor="static" />
       </section>
 
       <section className="section-card">

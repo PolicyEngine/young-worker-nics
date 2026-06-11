@@ -19,6 +19,18 @@ function getInitialTab(tabParam) {
   return "reform";
 }
 
+function TabLink({ onSelect, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className="font-semibold text-[color:var(--pe-color-primary-600)] underline decoration-1 underline-offset-2 transition-opacity hover:opacity-80"
+    >
+      {children}
+    </button>
+  );
+}
+
 function Dashboard() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -77,18 +89,41 @@ function Dashboard() {
               PolicyEngine UK
             </a>
             &apos;s microsimulation model to estimate the fiscal cost and employment
-            effects of extending the employer NICs zero rate — which already covers
-            under-21s and apprentices under 25 — to all employees aged 18 to 24, up
-            to the Upper Secondary Threshold. The{" "}
-            <strong>Young-worker NICs exemption</strong> tab shows the{" "}
-            <em>population (static)</em> cost and the <em>population (behavioural)</em>{" "}
-            results — wage pass-through simulations, poverty and distributional
-            impacts, and labour demand scenarios (a single-worker household calculator
-            view appears when built). The{" "}
-            <strong>Youth labour market baseline</strong> tab reconciles the model
-            with official statistics on NEETs and employer NICs. The{" "}
-            <strong>Methodology</strong> tab explains how every result is computed,
-            with sources for every assumption.
+            effects of extending the employer NICs zero rate — which{" "}
+            {data ? (
+              <a
+                href={data.statutory_unmodelled.under_21_relief.url}
+                target="_blank"
+                rel="noreferrer"
+                className="underline"
+              >
+                already covers under-21s and apprentices under 25
+              </a>
+            ) : (
+              "already covers under-21s and apprentices under 25"
+            )}{" "}
+            — to all employees aged 18 to 24, up to the Upper Secondary Threshold.
+            The{" "}
+            <TabLink onSelect={() => handleTabChange("reform")}>
+              Young-worker NICs exemption
+            </TabLink>{" "}
+            tab shows the static cost of the reform and the behavioural results —
+            wage pass-through simulations, poverty and distributional impacts, and
+            labour demand scenarios
+            {data?.person_calculator
+              ? ", plus a single-worker household calculator"
+              : ""}
+            . The{" "}
+            <TabLink onSelect={() => handleTabChange("baseline")}>
+              Youth labour market baseline
+            </TabLink>{" "}
+            tab reconciles the model with official statistics on NEETs and employer
+            NICs. The{" "}
+            <TabLink onSelect={() => handleTabChange("methodology")}>
+              Methodology
+            </TabLink>{" "}
+            tab explains how every result is computed, with sources for every
+            assumption.
           </p>
         </div>
 
