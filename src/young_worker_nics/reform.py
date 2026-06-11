@@ -33,6 +33,9 @@ Use with the managed bundle::
 
 from __future__ import annotations
 
+# The policyengine bundle does not re-export the model API, so defining a
+# Variable override requires these direct imports. Both packages are
+# exact-pinned by policyengine[uk], the project's only simulation dependency.
 from policyengine_core.reforms import Reform
 from policyengine_uk.model_api import GBP, WEEKS_IN_YEAR, YEAR, Person, Variable, max_, min_
 
