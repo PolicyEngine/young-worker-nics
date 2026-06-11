@@ -2,7 +2,6 @@
 
 import { formatBn, formatCount, formatCurrency, formatPct } from "../lib/formatters";
 import { getBaseline, getNicsParameters } from "../lib/dataHelpers";
-import MethodologyLink from "./MethodologyLink";
 import SectionHeading from "./SectionHeading";
 
 export default function BaselineTab({ data }) {
@@ -79,7 +78,6 @@ export default function BaselineTab({ data }) {
             </tr>
           </tbody>
         </table>
-        <MethodologyLink anchor="reconciliation" />
       </section>
 
       <section className="section-card">
@@ -118,7 +116,6 @@ export default function BaselineTab({ data }) {
             </tr>
           </tbody>
         </table>
-        <MethodologyLink anchor="static" />
       </section>
 
       <section className="section-card">

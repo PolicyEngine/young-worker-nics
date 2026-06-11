@@ -28,7 +28,6 @@ import {
   getStatic,
 } from "../lib/dataHelpers";
 import ChartLogo from "./ChartLogo";
-import MethodologyLink from "./MethodologyLink";
 import SectionHeading from "./SectionHeading";
 
 const AXIS_STYLE = { fontSize: 12, fill: colors.gray[500] };
@@ -299,7 +298,6 @@ function StaticView({ data }) {
             }
           />
         </div>
-        <MethodologyLink anchor="static" />
       </section>
 
       <section className="section-card">
@@ -409,7 +407,6 @@ function StaticView({ data }) {
           </ResponsiveContainer>
         </div>
         <ChartLogo />
-        <MethodologyLink anchor="static" />
       </section>
     </>
   );
@@ -529,7 +526,6 @@ function BehaviouralView({ data }) {
             ))}
           </tbody>
         </table>
-        <MethodologyLink anchor="pass_through" />
       </section>
 
       <section className="section-card">
@@ -585,7 +581,6 @@ function BehaviouralView({ data }) {
                 </tr>
               </tbody>
             </table>
-            <MethodologyLink anchor="pass_through" />
           </>
         )}
       </section>
@@ -611,7 +606,6 @@ function BehaviouralView({ data }) {
               note={`${formatCount(scenario.poverty.people_lifted_18_24)} are themselves aged 18-24; the rest share a household with a young worker whose pay rises.`}
             />
           </div>
-          <MethodologyLink anchor="poverty" />
         </section>
       )}
 
@@ -672,7 +666,6 @@ function BehaviouralView({ data }) {
             </ResponsiveContainer>
           </div>
           <ChartLogo />
-          <MethodologyLink anchor="distributional" />
         </section>
       )}
 
@@ -801,7 +794,6 @@ function BehaviouralView({ data }) {
             ))}
           </tbody>
         </table>
-        <MethodologyLink anchor="employment" />
       </section>
     </>
   );
