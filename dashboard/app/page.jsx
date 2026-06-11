@@ -86,9 +86,9 @@ function Dashboard() {
           <p className="mb-3 text-[1.05rem] leading-relaxed text-slate-600">
             This dashboard uses{" "}
             <a href="https://policyengine.org" target="_blank" rel="noreferrer" className="underline">
-              PolicyEngine UK
-            </a>
-            &apos;s microsimulation model to estimate the fiscal cost and employment
+              PolicyEngine
+            </a>{" "}
+            UK&apos;s microsimulation model to estimate the fiscal cost and employment
             effects of extending the employer NICs zero rate — which already
             covers{" "}
             {data ? (
@@ -105,7 +105,19 @@ function Dashboard() {
             )}{" "}
             and apprentices under 25 — to all employees aged 18 to 24, up to the
             Upper Secondary Threshold
-            {data ? `, for fiscal year ${data.fiscal_year_label}` : ""}. The{" "}
+            {data ? `, for fiscal year ${data.fiscal_year_label}` : ""}. The
+            policy context is set out in Alan Milburn&apos;s Young People and
+            Work interim{" "}
+            <a
+              href="https://www.gov.uk/government/publications/young-people-and-work-interim-report/young-people-and-work-interim-report"
+              target="_blank"
+              rel="noreferrer"
+              className="underline"
+            >
+              review
+            </a>{" "}
+            (DWP, May 2026), which found nearly one million 16-24-year-olds — one
+            in eight — not in education, employment or training. The{" "}
             <TabLink onSelect={() => handleTabChange("reform")}>
               Young-worker NICs exemption
             </TabLink>{" "}
@@ -170,6 +182,11 @@ function Dashboard() {
             >
               PolicyEngine/young-worker-nics
             </a>
+            {data?.package_versions
+              ? `, run on ${Object.entries(data.package_versions)
+                  .map(([name, version]) => `${name} ${version}`)
+                  .join(" and ")}`
+              : ""}
             .
           </p>
         </footer>

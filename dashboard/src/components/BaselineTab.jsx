@@ -299,9 +299,7 @@ export default function BaselineTab({ data }) {
               </td>
               <td>
                 ONS level rose {formatCount(neet.year_on_year_change)} on a year earlier
-                ({neet.change_period_label}). The model proxy undershoots because the
-                ONS measure is a point-in-time survey status that also counts training,
-                while the proxy uses education status and annual employment income.
+                ({neet.change_period_label}).
               </td>
             </tr>
           </tbody>

@@ -22,6 +22,7 @@ verbatim into the results JSON so the dashboard renders no hardcoded numbers.
 from __future__ import annotations
 
 import argparse
+import importlib.metadata
 import json
 from pathlib import Path
 
@@ -437,17 +438,14 @@ def run(args: argparse.Namespace) -> None:
             "Reform object that zero-rates the relieved band for 18-24s; the build "
             "fails if it diverges from the threshold arithmetic by more than 0.1%."
         ),
-        "reconciliation": (
-            "Enhanced-FRS counts: 'in education' is a current education status, 'in "
-            "employment' is any employment income in the year (working students count "
-            "as both), NEET is neither. The proxy understates the ONS LFS measure, a "
-            "point-in-time survey status that also counts training."
-        ),
     }
 
     output = {
         "year": YEAR,
         "fiscal_year_label": f"{YEAR}-{(YEAR + 1) % 100:02d}",
+        "package_versions": {
+            name: importlib.metadata.version(name) for name in ("policyengine", "policyengine-uk")
+        },
         "settings": {
             "pass_through_scenarios": list(args.pass_through),
             "demand_elasticities": {

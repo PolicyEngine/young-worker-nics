@@ -11,7 +11,6 @@ const METHOD_LABELS = {
   distributional: "Distributional impact",
   employment: "Employment response",
   reform_object: "Reform implementation",
-  reconciliation: "Population reconciliation",
 };
 
 export default function MethodologyTab({ data }) {
@@ -111,55 +110,6 @@ export default function MethodologyTab({ data }) {
         </ul>
       </section>
 
-      <section className="section-card">
-        <SectionHeading
-          title="Assumptions registry"
-          description="Every non-PolicyEngine number in the analysis, with its source."
-        />
-        <details>
-          <summary className="cursor-pointer text-sm font-medium text-slate-600">
-            Show all assumptions
-          </summary>
-          <table className="data-table mt-3">
-            <thead>
-              <tr>
-                <th>Assumption</th>
-                <th>Value</th>
-                <th>Source</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Object.entries({
-                "Calculator annual rent": data.assumptions.calculator_annual_rent,
-                ...Object.fromEntries(
-                  data.assumptions.pass_through_scenarios.map((s) => [
-                    `Pass-through ${formatPct(s.value * 100, 0)}`,
-                    s,
-                  ])
-                ),
-                ...Object.fromEntries(
-                  Object.entries(data.assumptions.demand_elasticities).map(([k, s]) => [
-                    `Demand elasticity (${k})`,
-                    s,
-                  ])
-                ),
-              }).map(([label, source]) => (
-                <tr key={label}>
-                  <td>{label}</td>
-                  <td>{source.value}</td>
-                  <td>
-                    {source.description} (
-                    <a href={source.url} target="_blank" rel="noreferrer" className="underline">
-                      source
-                    </a>
-                    )
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </details>
-      </section>
     </div>
   );
 }

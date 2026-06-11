@@ -271,7 +271,11 @@ function StaticView({ data }) {
           title="Treatment by employee group"
           description="The bold row is the only change; every other group keeps its current treatment."
         />
-        <table className="data-table">
+        <details>
+          <summary className="cursor-pointer text-sm font-medium text-slate-600">
+            Show all groups
+          </summary>
+          <table className="data-table mt-3">
           <thead>
             <tr>
               <th>Employee group</th>
@@ -324,18 +328,19 @@ function StaticView({ data }) {
               <td>{rate} (unchanged)</td>
             </tr>
           </tbody>
-        </table>
-        <details className="mt-2 text-xs text-slate-500">
-          <summary className="cursor-pointer">
-            * Why apprentices are not separated out in the model
-          </summary>
-          <p className="mt-1">
-            PolicyEngine UK defines an apprentice flag, but the Family
-            Resources Survey microdata behind it records no apprenticeship
-            status, so the flag is false for every person and apprentices
-            cannot be separated from other employees. Their relief is existing
-            law and is not counted in the reform&apos;s cost.
-          </p>
+          </table>
+          <details className="mt-2 text-xs text-slate-500">
+            <summary className="cursor-pointer">
+              * Why apprentices are not separated out in the model
+            </summary>
+            <p className="mt-1">
+              PolicyEngine UK defines an apprentice flag, but the Family
+              Resources Survey microdata behind it records no apprenticeship
+              status, so the flag is false for every person and apprentices
+              cannot be separated from other employees. Their relief is existing
+              law and is not counted in the reform&apos;s cost.
+            </p>
+          </details>
         </details>
       </section>
 

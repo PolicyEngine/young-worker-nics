@@ -1,6 +1,10 @@
 {
   "year": 2027,
   "fiscal_year_label": "2027-28",
+  "package_versions": {
+    "policyengine": "4.11.0",
+    "policyengine-uk": "2.88.20"
+  },
   "settings": {
     "pass_through_scenarios": [
       0.0,
@@ -20,8 +24,7 @@
     "poverty": "Baseline and boosted-wage simulations compared on PolicyEngine's absolute before-housing-costs poverty measure: household equivalised HBAI net income against the CPI-uprated DWP threshold, person-weighted headcounts.",
     "distributional": "Households ranked by baseline equivalised HBAI net income into person-weighted deciles, quintiles or quartiles (PolicyEngine's published convention); the chart shows the weighted average net-income change across all households in each group, gainers and non-gainers alike.",
     "employment": "External labour demand elasticities applied to the simulated percentage fall in total employment cost (gross pay plus employer NICs) for employed 21-24-year-olds; new jobs equal elasticity times average cost wedge times the weighted employee count. A partial-equilibrium scenario range, not a forecast.",
-    "reform_object": "Build-time cross-check: the static cost is recomputed via a PolicyEngine Reform object that zero-rates the relieved band for 18-24s; the build fails if it diverges from the threshold arithmetic by more than 0.1%.",
-    "reconciliation": "Enhanced-FRS counts: 'in education' is a current education status, 'in employment' is any employment income in the year (working students count as both), NEET is neither. The proxy understates the ONS LFS measure, a point-in-time survey status that also counts training."
+    "reform_object": "Build-time cross-check: the static cost is recomputed via a PolicyEngine Reform object that zero-rates the relieved band for 18-24s; the build fails if it diverges from the threshold arithmetic by more than 0.1%."
   },
   "nics_parameters": {
     "employer_rate": 0.15,
