@@ -21,10 +21,18 @@ export default function BaselineTab({ data }) {
 
   return (
     <div className="space-y-6">
+      <div className="pt-2">
+        <SectionHeading
+          size="lg"
+          title="The youth labour market"
+          description="Who the policy is for, and who it is paid on. The NEET group is the policy's target; the employed group is where the exemption flows — the gap between the two is why much of a blanket hiring subsidy goes to employment that would exist anyway."
+        />
+      </div>
+
       <section className="section-card">
         <SectionHeading
           title="Youth population by activity status"
-          description="Every young person is in exactly one of three states: in education, in employment, or in neither (NEET). The NEET group is who this policy is for; the employed group is who the exemption is paid on. A student with a part-time job counts as both in education and in employment, and is never NEET. Model counts from the PolicyEngine UK enhanced FRS; the official column from the ONS."
+          description="Every young person is in exactly one of three states: in education, in employment, or in neither (NEET). A student with a part-time job counts as both in education and in employment, and is never NEET. Model counts from the PolicyEngine UK enhanced FRS; the official column from the ONS."
         />
         <table className="data-table">
           <thead>
@@ -90,6 +98,57 @@ export default function BaselineTab({ data }) {
         </table>
       </section>
 
+      <div className="pt-2">
+        <SectionHeading
+          size="lg"
+          title="Employer NICs on young workers today"
+          description="The statutory parameters as they stand, and the modelled employer NICs at stake in the band the zero rate would touch."
+        />
+      </div>
+
+      <section className="section-card">
+        <SectionHeading
+          title="NICs rates and thresholds"
+          description={
+            <>
+              Statutory parameters read from the PolicyEngine UK parameter tree for{" "}
+              {data.fiscal_year_label}; nothing here is typed into the analysis by
+              hand. Employers pay NICs at the rate below on each employee&apos;s
+              earnings above the Secondary Threshold (annualised from the statutory
+              weekly figure, hence not a round number). The existing zero rate for
+              under-21s (
+              <a
+                href={reliefs.under_21_relief.url}
+                target="_blank"
+                rel="noreferrer"
+                className="underline"
+              >
+                category M
+              </a>
+              ) switches that charge off between the Secondary and Upper Secondary
+              Thresholds; the full rate still applies above the UST. The reform
+              extends this design to all employees aged 18-24.
+            </>
+          }
+        />
+        <table className="data-table">
+          <tbody>
+            <tr>
+              <td>Employer (secondary Class 1) rate</td>
+              <td>{formatPct(params.employer_rate * 100)}</td>
+            </tr>
+            <tr>
+              <td>Secondary Threshold (annual)</td>
+              <td>{formatCurrency(params.secondary_threshold_annual)}</td>
+            </tr>
+            <tr>
+              <td>Upper Secondary Threshold (annual)</td>
+              <td>{formatCurrency(params.upper_secondary_threshold_annual)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
       <section className="section-card">
         <SectionHeading
           title="Employer NICs paid on young workers"
@@ -128,10 +187,18 @@ export default function BaselineTab({ data }) {
         </table>
       </section>
 
+      <div className="pt-2">
+        <SectionHeading
+          size="lg"
+          title="Reconciliation with official statistics"
+          description="Cross-checks of model aggregates against published ONS and HMRC figures, with the definitional gaps explained."
+        />
+      </div>
+
       <section className="section-card">
         <SectionHeading
           title="Model versus official statistics"
-          description="Cross-checks of model aggregates against published official figures."
+          description="Each row pairs a model quantity with the nearest published figure."
         />
         <table className="data-table">
           <thead>
@@ -241,48 +308,6 @@ export default function BaselineTab({ data }) {
         </table>
       </section>
 
-      <section className="section-card">
-        <SectionHeading
-          title="NICs rates and thresholds"
-          description={
-            <>
-              Statutory parameters read from the PolicyEngine UK parameter tree for{" "}
-              {data.fiscal_year_label}; nothing here is typed into the analysis by
-              hand. Employers pay NICs at the rate below on each employee&apos;s
-              earnings above the Secondary Threshold (annualised from the statutory
-              weekly figure, hence not a round number). The existing zero rate for
-              under-21s (
-              <a
-                href={reliefs.under_21_relief.url}
-                target="_blank"
-                rel="noreferrer"
-                className="underline"
-              >
-                category M
-              </a>
-              ) switches that charge off between the Secondary and Upper Secondary
-              Thresholds; the full rate still applies above the UST. The reform
-              extends this design to all employees aged 18-24.
-            </>
-          }
-        />
-        <table className="data-table">
-          <tbody>
-            <tr>
-              <td>Employer (secondary Class 1) rate</td>
-              <td>{formatPct(params.employer_rate * 100)}</td>
-            </tr>
-            <tr>
-              <td>Secondary Threshold (annual)</td>
-              <td>{formatCurrency(params.secondary_threshold_annual)}</td>
-            </tr>
-            <tr>
-              <td>Upper Secondary Threshold (annual)</td>
-              <td>{formatCurrency(params.upper_secondary_threshold_annual)}</td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
     </div>
   );
 }

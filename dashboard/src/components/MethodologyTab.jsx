@@ -34,55 +34,24 @@ export default function MethodologyTab({ data }) {
     <div className="space-y-6">
       <section className="section-card">
         <SectionHeading
-          title="Model overview"
-          description="Static microsimulation with scenario-based behavioural layers."
-        />
-        <ol className="list-decimal space-y-2 pl-6 text-slate-700">
-          <li>
-            Load the PolicyEngine UK baseline (enhanced Family Resources Survey)
-            via the <code>policyengine.py</code> managed bundle.
-          </li>
-          <li>
-            Read statutory parameters (employer rate, Secondary Threshold, Upper
-            Earnings Limit as the Upper Secondary Threshold proxy) from the
-            PolicyEngine parameter tree — never hard-coded.
-          </li>
-          <li>
-            Compute the employer NICs forgone for each employed 21-24-year-old:
-            the rate times NICable earnings between the Secondary Threshold and
-            the Upper Secondary Threshold. Under-21s are already zero-rated, so
-            the marginal cost covers employed 21-24-year-olds.
-          </li>
-          <li>
-            For each wage pass-through scenario, boost the employment income of
-            employed 21-24-year-olds and re-run the full microsimulation, so
-            income tax, employee NICs and benefit withdrawal are computed
-            exactly; apply labour demand elasticity scenarios on the
-            employment-cost wedge.
-          </li>
-        </ol>
-      </section>
-
-      <section className="section-card">
-        <SectionHeading
           title="Computation methods"
-          description="Method explainers written by the analysis pipeline alongside the results, reproduced verbatim. Each section of the analysis links to its entry here."
+          description="Static microsimulation on the PolicyEngine UK enhanced Family Resources Survey, with scenario-based behavioural layers. Statutory parameters are read from the PolicyEngine parameter tree, never hard-coded. Each note below is written by the analysis pipeline alongside the result it describes."
         />
-        <dl className="space-y-4">
+        <div className="grid gap-x-8 gap-y-5 md:grid-cols-2">
           {Object.entries(data.methods).map(([key, text]) => (
             <div key={key} id={`method-${key}`} className="scroll-mt-24">
-              <dt className="eyebrow text-slate-500">{METHOD_LABELS[key]}</dt>
-              <dd className="mt-1 text-sm leading-6 text-slate-700">{text}</dd>
+              <h3 className="text-sm font-semibold text-slate-800">
+                {METHOD_LABELS[key]}
+              </h3>
+              <p className="mt-1 text-sm leading-6 text-slate-600">{text}</p>
             </div>
           ))}
-        </dl>
+        </div>
       </section>
 
       <section className="section-card">
-        <SectionHeading
-          title="Wage pass-through assumption"
-        />
-        <p className="mb-3 text-slate-700">
+        <SectionHeading title="Wage pass-through assumption" />
+        <p className="text-sm leading-6 text-slate-600">
           The <a href={obr.source} target="_blank" rel="noreferrer" className="underline">OBR</a>{" "}
           assumed the {obr.nics_rise_year} employer NICs <em>rise</em> would be
           passed to workers as lower real wages —{" "}
@@ -109,7 +78,7 @@ export default function MethodologyTab({ data }) {
 
       <section className="section-card scroll-mt-24" id="model-omissions">
         <SectionHeading title="Model limitations" />
-        <ul className="list-disc space-y-1 pl-6 text-slate-700">
+        <ul className="list-disc space-y-1 pl-6 text-sm leading-6 text-slate-600">
           <li>
             <a
               href={employmentAllowance.url}
@@ -120,29 +89,25 @@ export default function MethodologyTab({ data }) {
               Employment Allowance
             </a>{" "}
             interactions: small employers with secondary NICs below{" "}
-            {formatCurrency(employmentAllowance.value)} already pay nothing
-            on these workers, so the static cost is overstated (the FRS has no
+            {formatCurrency(employmentAllowance.value)} already pay nothing on
+            these workers, so the static cost is overstated (the FRS has no
             employer-side data).
           </li>
           <li>
-            General-equilibrium and substitution effects (e.g. hiring shifted away
-            from workers aged 25+ just above the cutoff).
+            General-equilibrium and substitution effects (e.g. hiring shifted
+            away from workers aged 25+ just above the cutoff).
           </li>
           <li>
-            Corporation-tax offset on the unpassed share: where the employer keeps
-            the NICs saving, taxable profits rise and part of the cost would flow
-            back to the Exchequer as corporation tax. This offset is not yet
-            modelled, so net costs are overstated at low pass-through rates.
+            Corporation-tax offset on the unpassed share: where employers keep
+            the saving, taxable profits rise, so net costs are overstated at
+            low pass-through rates.
           </li>
           <li>
-            Apprentices under 25 are already exempt in law (category H), but
-            the FRS contains no apprentice identifier, so we skip them
-            entirely — no adjustment is made anywhere in the results.
+            Apprentices under 25 are already exempt in law (category H) but
+            invisible in the FRS, so no adjustment is made for them.
           </li>
           <li>Public-sector recycling of the cost within government.</li>
-          <li>
-            Single-year-of-age detail: {data.age_band_note}
-          </li>
+          <li>Single-year-of-age detail: {data.age_band_note}</li>
         </ul>
       </section>
 
@@ -151,44 +116,49 @@ export default function MethodologyTab({ data }) {
           title="Assumptions registry"
           description="Every non-PolicyEngine number in the analysis, with its source."
         />
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Assumption</th>
-              <th>Value</th>
-              <th>Source</th>
-            </tr>
-          </thead>
-          <tbody>
-            {Object.entries({
-              "Calculator annual rent": data.assumptions.calculator_annual_rent,
-              ...Object.fromEntries(
-                data.assumptions.pass_through_scenarios.map((s) => [
-                  `Pass-through ${formatPct(s.value * 100, 0)}`,
-                  s,
-                ])
-              ),
-              ...Object.fromEntries(
-                Object.entries(data.assumptions.demand_elasticities).map(([k, s]) => [
-                  `Demand elasticity (${k})`,
-                  s,
-                ])
-              ),
-            }).map(([label, source]) => (
-              <tr key={label}>
-                <td>{label}</td>
-                <td>{source.value}</td>
-                <td>
-                  {source.description} (
-                  <a href={source.url} target="_blank" rel="noreferrer" className="underline">
-                    source
-                  </a>
-                  )
-                </td>
+        <details>
+          <summary className="cursor-pointer text-sm font-medium text-slate-600">
+            Show all assumptions
+          </summary>
+          <table className="data-table mt-3">
+            <thead>
+              <tr>
+                <th>Assumption</th>
+                <th>Value</th>
+                <th>Source</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {Object.entries({
+                "Calculator annual rent": data.assumptions.calculator_annual_rent,
+                ...Object.fromEntries(
+                  data.assumptions.pass_through_scenarios.map((s) => [
+                    `Pass-through ${formatPct(s.value * 100, 0)}`,
+                    s,
+                  ])
+                ),
+                ...Object.fromEntries(
+                  Object.entries(data.assumptions.demand_elasticities).map(([k, s]) => [
+                    `Demand elasticity (${k})`,
+                    s,
+                  ])
+                ),
+              }).map(([label, source]) => (
+                <tr key={label}>
+                  <td>{label}</td>
+                  <td>{source.value}</td>
+                  <td>
+                    {source.description} (
+                    <a href={source.url} target="_blank" rel="noreferrer" className="underline">
+                      source
+                    </a>
+                    )
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </details>
       </section>
     </div>
   );
