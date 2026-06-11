@@ -227,6 +227,17 @@ function HouseholdView({ data }) {
   );
 }
 
+function TipHeader({ label, tip }) {
+  return (
+    <th>
+      {label}{" "}
+      <span className="info-tip" tabIndex={0}>
+        i<span className="info-tip-bubble">{tip}</span>
+      </span>
+    </th>
+  );
+}
+
 function SourceLink({ href, children }) {
   return (
     <a href={href} target="_blank" rel="noreferrer" className="underline">
@@ -505,11 +516,26 @@ function BehaviouralView({ data }) {
         <table className="data-table">
           <thead>
             <tr>
-              <th>Pass-through</th>
-              <th>Gross cost</th>
-              <th>Fiscal offset</th>
-              <th>Net cost</th>
-              <th>Avg wage gain</th>
+              <TipHeader
+                label="Pass-through"
+                tip="Share of the employer NICs saving passed to treated workers as higher wages."
+              />
+              <TipHeader
+                label="Gross cost"
+                tip="Employer NICs forgone in the relieved band, before any revenue flows back to the Exchequer."
+              />
+              <TipHeader
+                label="Fiscal offset"
+                tip="Revenue recouped on the passed-through wages: income tax, employee NICs and benefits withdrawn as incomes rise."
+              />
+              <TipHeader
+                label="Net cost"
+                tip="Gross cost minus the fiscal offset."
+              />
+              <TipHeader
+                label="Avg wage gain"
+                tip="Average annual wage increase per treated 21-24-year-old employee under this scenario."
+              />
             </tr>
           </thead>
           <tbody>
@@ -772,12 +798,7 @@ function BehaviouralView({ data }) {
                   tip: "Static cost divided by new jobs. It counts the subsidy paid on all existing jobs, which is why it is a multiple of a young worker's salary.",
                 },
               ].map((col) => (
-                <th key={col.label}>
-                  {col.label}{" "}
-                  <span className="info-tip" tabIndex={0}>
-                    i<span className="info-tip-bubble">{col.tip}</span>
-                  </span>
-                </th>
+                <TipHeader key={col.label} label={col.label} tip={col.tip} />
               ))}
             </tr>
           </thead>
