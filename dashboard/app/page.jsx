@@ -109,8 +109,8 @@ function Dashboard() {
               "under-21s"
             )}{" "}
             and apprentices under 25 — to all employees aged 18 to 24, up to the
-            Upper Secondary Threshold, for fiscal year{" "}
-            {data ? data.fiscal_year_label : "…"}. The{" "}
+            Upper Secondary Threshold
+            {data ? `, for fiscal year ${data.fiscal_year_label}` : ""}. The{" "}
             <TabLink onSelect={() => handleTabChange("reform")}>
               Young-worker NICs exemption
             </TabLink>{" "}
