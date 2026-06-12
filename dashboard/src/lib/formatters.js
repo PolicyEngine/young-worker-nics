@@ -19,12 +19,12 @@ export function formatSignedCurrency(value) {
 }
 
 export function formatBn(value) {
-  return `\u00A3${Number(value).toFixed(1)}bn`;
+  return `\u00A3${Number(value).toFixed(2)}bn`;
 }
 
 export function formatSignedBn(value) {
   const amount = Number(value);
-  return `${getSignedPrefix(amount)}\u00A3${Math.abs(amount).toFixed(1)}bn`;
+  return `${getSignedPrefix(amount)}\u00A3${Math.abs(amount).toFixed(2)}bn`;
 }
 
 export function formatMn(value) {

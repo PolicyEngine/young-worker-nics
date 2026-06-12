@@ -586,9 +586,9 @@ function BehaviouralView({ data, targeted }) {
   const [scenarioRate, setScenarioRate] = useState(
     defaultScenario ? defaultScenario.pass_through_rate : null
   );
-  // Quintile/decile splits are too granular for the probability-weighted
-  // targeted population; only the quartile split is offered there.
-  const groupings = targeted ? ["quartiles"] : ["quintiles", "quartiles", "deciles"];
+  // Deciles are too granular for this chart; the targeted population
+  // additionally drops quintiles (thin probability-weighted cells).
+  const groupings = targeted ? ["quartiles"] : ["quintiles", "quartiles"];
   const [grouping, setGrouping] = useState(targeted ? "quartiles" : "quintiles");
   const scenario =
     passThrough.find((s) => s.pass_through_rate === scenarioRate) ||
