@@ -434,9 +434,11 @@ function StaticView({ data, targeted }) {
                 : "Employees newly exempt: employed 21-24-year-olds"
             }
             value={
-              staticResults.n_marginal_employees != null
-                ? `${(staticResults.n_marginal_employees / 1e6).toFixed(2)}m`
-                : "—"
+              staticResults.n_marginal_employees == null
+                ? "—"
+                : staticResults.n_marginal_employees >= 1e6
+                  ? `${(staticResults.n_marginal_employees / 1e6).toFixed(2)}m`
+                  : `${Math.round(staticResults.n_marginal_employees / 1e3)}k`
             }
             note={
               targeted ? null : (
