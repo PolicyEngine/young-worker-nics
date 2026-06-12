@@ -44,10 +44,9 @@ const SUB_TABS = (hasCalculator) => [
   { id: "behavioural", label: "Population (behavioural)" },
 ];
 
+// Quintile and decile splits are in the JSON but not offered in the UI.
 const DIMENSIONS = [
-  { id: "by_income_quintile", label: "Income quintile" },
   { id: "by_income_quartile", label: "Income quartile" },
-  { id: "by_income_decile", label: "Income decile" },
   { id: "by_age", label: "Age" },
   { id: "by_gender", label: "Gender" },
   { id: "by_country", label: "Country" },
@@ -266,16 +265,8 @@ function SourceLink({ href, children }) {
 }
 
 function StaticView({ data, targeted }) {
-  // Quintile/decile splits are too granular for the probability-weighted
-  // targeted population; only the quartile income split is offered there.
-  const dimensions = targeted
-    ? DIMENSIONS.filter(
-        (d) => d.id !== "by_income_quintile" && d.id !== "by_income_decile"
-      )
-    : DIMENSIONS;
-  const [dimension, setDimension] = useState(
-    targeted ? "by_income_quartile" : "by_income_quintile"
-  );
+  const dimensions = DIMENSIONS;
+  const [dimension, setDimension] = useState("by_income_quartile");
   // `targeted` mirrors the data.reform schema; the pipeline may omit some
   // breakdowns for the targeted population, so every access is null-guarded.
   const staticResults = targeted ? (targeted.static ?? null) : getStatic(data);
