@@ -9,9 +9,12 @@ const METHOD_LABELS = {
   pass_through: "Wage pass-through and fiscal offsets",
   poverty: "Poverty impact",
   distributional: "Distributional impact",
-  employment: "Employment response",
-  reform_object: "Reform implementation",
+  // employment: hidden with the labour demand response section; restore the
+  // label here when that section returns to the reform tab.
+  // reform_object: hidden — internal build-time cross-check, not a result.
 };
+// Rendered in its own box below the grid, not as a grid entry.
+const TARGETED_METHOD_KEY = "targeted_population";
 
 export default function MethodologyTab({ data }) {
   // Analysis sections link here with /?tab=methodology#method-<key>; the tab
@@ -31,20 +34,37 @@ export default function MethodologyTab({ data }) {
 
   return (
     <div className="space-y-6">
+      {data.methods[TARGETED_METHOD_KEY] && (
+        <section
+          className="section-card scroll-mt-24"
+          id={`method-${TARGETED_METHOD_KEY}`}
+        >
+          <SectionHeading
+            title="Targeted population imputation"
+            description="The method behind the reform tab's recent-NEET population assumption."
+          />
+          <p className="text-sm leading-6 text-slate-600">
+            {data.methods[TARGETED_METHOD_KEY]}
+          </p>
+        </section>
+      )}
+
       <section className="section-card">
         <SectionHeading
           title="Computation methods"
           description="Static microsimulation on the PolicyEngine UK enhanced Family Resources Survey, with scenario-based behavioural layers. Statutory parameters are read from the PolicyEngine parameter tree, never hard-coded. Each note below is written by the analysis pipeline alongside the result it describes."
         />
         <div className="grid gap-x-8 gap-y-5 md:grid-cols-2">
-          {Object.entries(data.methods).map(([key, text]) => (
-            <div key={key} id={`method-${key}`} className="scroll-mt-24">
-              <h3 className="text-sm font-semibold text-slate-800">
-                {METHOD_LABELS[key]}
-              </h3>
-              <p className="mt-1 text-sm leading-6 text-slate-600">{text}</p>
-            </div>
-          ))}
+          {Object.entries(data.methods)
+            .filter(([key]) => METHOD_LABELS[key])
+            .map(([key, text]) => (
+              <div key={key} id={`method-${key}`} className="scroll-mt-24">
+                <h3 className="text-sm font-semibold text-slate-800">
+                  {METHOD_LABELS[key]}
+                </h3>
+                <p className="mt-1 text-sm leading-6 text-slate-600">{text}</p>
+              </div>
+            ))}
         </div>
       </section>
 
@@ -53,7 +73,7 @@ export default function MethodologyTab({ data }) {
         <p className="text-sm leading-6 text-slate-600">
           The <a href={obr.source} target="_blank" rel="noreferrer" className="underline">OBR</a>{" "}
           assumed the {obr.nics_rise_year} employer NICs <em>rise</em> would be
-          passed to workers as lower real wages —{" "}
+          passed to workers as lower real wages:{" "}
           {formatPct(obr.initial_pass_through * 100, 0)} in {obr.initial_year_label},{" "}
           {formatPct(obr.medium_term_pass_through * 100, 0)} from{" "}
           {obr.medium_term_year_label}. But the{" "}
@@ -62,7 +82,7 @@ export default function MethodologyTab({ data }) {
           </a>{" "}
           on <em>age-targeted</em> cuts (Sweden&apos;s under-26 cut; Saez,
           Schoefer &amp; Seim 2019) found approximately zero pass-through to the
-          targeted workers&apos; own wages — pay-equity norms and the binding
+          targeted workers&apos; own wages: pay-equity norms and the binding
           National Living Wage make age-specific pay rises unlikely. We
           therefore present{" "}
           {formatPct(settings.pass_through_scenarios[0] * 100, 0)} as the central

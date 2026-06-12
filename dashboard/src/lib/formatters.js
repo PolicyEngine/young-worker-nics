@@ -64,5 +64,6 @@ export function formatCount(value) {
   if (num >= 1e3) {
     return `${(num / 1e3).toFixed(1)}k`;
   }
-  return num.toLocaleString("en-GB");
+  // Survey-weighted counts are fractional; never show decimals of a person.
+  return Math.round(num).toLocaleString("en-GB");
 }

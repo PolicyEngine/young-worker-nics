@@ -27,6 +27,7 @@ import json
 from pathlib import Path
 
 import numpy as np
+from microdf import MicroSeries
 
 from . import sources
 from .calculator import build_person_calculator_lookup
@@ -52,6 +53,159 @@ AGE_BANDS = [
     ("18-20", REFORM_AGE_LOWER, MARGINAL_AGE_LOWER - 1),
     ("21-24", MARGINAL_AGE_LOWER, REFORM_AGE_UPPER),
 ]
+
+POPULATION_LABEL_FULL = "All employees aged 21-24"
+POPULATION_LABEL_TARGETED = "Employees aged 21-24 who were NEET within the past year"
+
+
+def _region_label(level: str) -> str:
+    """ITL1 region enum to display label (EAST_OF_ENGLAND -> East of England)."""
+    return level.replace("_", " ").title().replace(" Of ", " of ")
+
+
+def _run_pass_through_scenarios(
+    *,
+    rates: list[float],
+    boost_unit_values: np.ndarray,
+    gross_cost: float,
+    n_employees: float,
+    simulation_factory,
+    baseline,
+    year: int,
+    age,
+    employment_income_values: np.ndarray,
+    baseline_totals: dict[str, float],
+    population_desc: str,
+) -> list[dict]:
+    """Boosted-wage pass-through scenarios for one treated population.
+
+    Shared by the full 21-24 population and the targeted (recent-NEET)
+    population, which differ only in the per-person wage boost.
+    ``boost_unit_values`` is the unweighted person-order wage boost at 100%
+    pass-through (zero outside the treated population); its survey-weighted
+    total must equal ``gross_cost``, that population's static cost. Each
+    non-zero rate re-runs a full PolicyEngine simulation on boosted wages, so
+    income tax, employee NICs and benefit withdrawal are computed exactly
+    person by person.
+
+    Employer NICs on the wage increments are deliberately excluded: the
+    reform zero-rates the relieved band, so the increments attract no
+    employer NICs (`ni_employee` is Class 1 employee-side only). Student
+    loan repayments also rise with earnings but are conservatively excluded
+    from the offset. set_input MUST precede any calculate on the fresh sim:
+    policyengine-core does not invalidate dependents' caches.
+    """
+    scenarios = []
+    for index, s in enumerate(rates, start=1):
+        if not 0.0 <= s <= 1.0:
+            raise ValueError(f"Pass-through rate {s} outside [0, 1].")
+        print(f"    [{index}/{len(rates)}] pass-through {s:.0%} ({population_desc})...")
+
+        if s == 0:
+            # No wages change: every offset is exactly zero and there is no
+            # poverty or distributional impact to simulate (the no-change
+            # case, not a fallback).
+            scenarios.append(
+                {
+                    "pass_through_rate": 0.0,
+                    "gross_cost_bn": gross_cost / 1e9,
+                    "fiscal_offset_bn": 0.0,
+                    "offset_components_bn": {
+                        "income_tax": 0.0,
+                        "employee_nics": 0.0,
+                        "benefits_saved": 0.0,
+                    },
+                    "net_cost_bn": gross_cost / 1e9,
+                    "avg_wage_gain": 0.0,
+                    "poverty": None,
+                    "inequality": None,
+                    "avg_change_by_group": None,
+                }
+            )
+            continue
+
+        # Per-person gross wage boost: s × the population's per-person
+        # employer NICs saving. Unweighted person-order array for set_input;
+        # weights re-enter natively when the reformed sim's calculate returns
+        # MicroSeries.
+        boost_values = boost_unit_values * s
+        expected_boost_total = gross_cost * s
+        if expected_boost_total <= 0:
+            raise RuntimeError(f"Pass-through {s} produced a zero total wage boost; check masks.")
+
+        reformed = simulation_factory()
+        reformed.set_input("employment_income", year, employment_income_values + boost_values)
+
+        applied_boost_total = (
+            float(reformed.calculate("employment_income", year).sum())
+            - baseline_totals["employment_income"]
+        )
+        if abs(applied_boost_total - expected_boost_total) > 1e-6 * expected_boost_total:
+            raise RuntimeError(
+                "set_input did not take effect: applied weighted wage boost "
+                f"£{applied_boost_total:,.0f} != expected £{expected_boost_total:,.0f}."
+            )
+
+        delta_income_tax = (
+            float(reformed.calculate("income_tax", year).sum()) - baseline_totals["income_tax"]
+        )
+        delta_employee_nics = (
+            float(reformed.calculate("ni_employee", year).sum()) - baseline_totals["ni_employee"]
+        )
+        benefits_saved = baseline_totals["household_benefits"] - float(
+            reformed.calculate("household_benefits", year).sum()
+        )
+
+        fiscal_offset = delta_income_tax + delta_employee_nics + benefits_saved
+
+        scenarios.append(
+            {
+                "pass_through_rate": s,
+                "gross_cost_bn": gross_cost / 1e9,
+                "fiscal_offset_bn": fiscal_offset / 1e9,
+                "offset_components_bn": {
+                    "income_tax": delta_income_tax / 1e9,
+                    "employee_nics": delta_employee_nics / 1e9,
+                    "benefits_saved": benefits_saved / 1e9,
+                },
+                "net_cost_bn": (gross_cost - fiscal_offset) / 1e9,
+                # Weighted mean boost across the treated population — equals
+                # the weighted boost total over the weighted employee count.
+                "avg_wage_gain": expected_boost_total / n_employees,
+                "poverty": poverty_impact(baseline, reformed, year, age),
+                "inequality": inequality_impact(baseline, reformed, year),
+                "avg_change_by_group": avg_change_by_group(baseline, reformed, year),
+            }
+        )
+    return scenarios
+
+
+def _employment_scenario_rows(
+    elasticity_scenarios: list[tuple[str, float]],
+    avg_wedge: float,
+    n_employees: float,
+    static_cost: float,
+) -> list[dict]:
+    """Labour-demand response rows: elasticity × cost wedge × employee count.
+
+    Shared arithmetic for the full and targeted populations, which differ
+    only in the (probability-)weighted employee count and average cost wedge.
+    """
+    rows = []
+    for label, elasticity in elasticity_scenarios:
+        employment_gain_pct = abs(elasticity) * avg_wedge
+        new_jobs = employment_gain_pct * n_employees
+        rows.append(
+            {
+                "scenario": label,
+                "demand_elasticity": elasticity,
+                "avg_cost_wedge_pct": avg_wedge,
+                "employment_gain_pct": employment_gain_pct,
+                "new_jobs": new_jobs,
+                "static_cost_per_job": static_cost / new_jobs,
+            }
+        )
+    return rows
 
 
 def run(args: argparse.Namespace) -> None:
@@ -89,6 +243,7 @@ def run(args: argparse.Namespace) -> None:
     age = baseline.calculate("age", YEAR)
     gender = baseline.calculate("gender", YEAR)
     country = baseline.calculate("country", YEAR, map_to="person")
+    region = baseline.calculate("region", YEAR, map_to="person")
     current_education = baseline.calculate("current_education", YEAR)
     employment_income = baseline.calculate("employment_income", YEAR)
     ni_class_1_income = baseline.calculate("ni_class_1_income", YEAR)
@@ -190,6 +345,14 @@ def run(args: argparse.Namespace) -> None:
         key=lambda row: row["static_cost_bn"],
         reverse=True,
     )
+    by_region = sorted(
+        (
+            breakdown_row(_region_label(level), headline_mask & (region == level))
+            for level in set(region[headline_mask])
+        ),
+        key=lambda row: row["static_cost_bn"],
+        reverse=True,
+    )
     by_income_decile = [
         breakdown_row(decile, headline_mask & (income_decile == decile)) for decile in range(1, 11)
     ]
@@ -244,107 +407,33 @@ def run(args: argparse.Namespace) -> None:
 
     # ── Step 6: Pass-through scenarios (exact microsimulation) ──────────────
     # Net Exchequer cost if a share s of the employer saving is passed to
-    # 21-24-year-old workers as higher gross wages. Each non-zero scenario
-    # re-runs a full PolicyEngine simulation on boosted wages, so income tax,
-    # employee NICs and benefit withdrawal are computed exactly person by
-    # person. Scenario values and citations live in
-    # sources.PASS_THROUGH_SCENARIOS.
-    #
-    # Employer NICs on the wage increments are deliberately excluded: the
-    # reform zero-rates the relieved band, so the increments attract no
-    # employer NICs (`ni_employee` is Class 1 employee-side only). Student
-    # loan repayments also rise with earnings but are conservatively excluded
-    # from the offset. set_input MUST precede any calculate on the fresh sim:
-    # policyengine-core does not invalidate dependents' caches.
+    # 21-24-year-old workers as higher gross wages. Scenario values and
+    # citations live in sources.PASS_THROUGH_SCENARIOS; the simulation
+    # machinery is shared with the targeted population in
+    # _run_pass_through_scenarios.
 
     print("Step 6: Pass-through scenarios (exact microsimulation)...")
     employment_income_values = employment_income.values
-    baseline_employment_income_total = float(employment_income.sum())
-    baseline_income_tax_total = float(baseline.calculate("income_tax", YEAR).sum())
-    baseline_employee_nics_total = float(baseline.calculate("ni_employee", YEAR).sum())
-    baseline_benefits_total = float(baseline.calculate("household_benefits", YEAR).sum())
+    baseline_totals = {
+        "employment_income": float(employment_income.sum()),
+        "income_tax": float(baseline.calculate("income_tax", YEAR).sum()),
+        "ni_employee": float(baseline.calculate("ni_employee", YEAR).sum()),
+        "household_benefits": float(baseline.calculate("household_benefits", YEAR).sum()),
+    }
 
-    pass_through_scenarios = []
-    for index, s in enumerate(args.pass_through, start=1):
-        if not 0.0 <= s <= 1.0:
-            raise ValueError(f"Pass-through rate {s} outside [0, 1].")
-        print(f"    [{index}/{len(args.pass_through)}] pass-through {s:.0%}...")
-
-        if s == 0:
-            # No wages change: every offset is exactly zero and there is no
-            # poverty or distributional impact to simulate (the no-change
-            # case, not a fallback).
-            pass_through_scenarios.append(
-                {
-                    "pass_through_rate": 0.0,
-                    "gross_cost_bn": static_cost_marginal / 1e9,
-                    "fiscal_offset_bn": 0.0,
-                    "offset_components_bn": {
-                        "income_tax": 0.0,
-                        "employee_nics": 0.0,
-                        "benefits_saved": 0.0,
-                    },
-                    "net_cost_bn": static_cost_marginal / 1e9,
-                    "avg_wage_gain": 0.0,
-                    "poverty": None,
-                    "inequality": None,
-                    "avg_change_by_group": None,
-                }
-            )
-            continue
-
-        # Per-person gross wage boost: s × employer NICs saving, employed
-        # 21-24s only. Unweighted person-order array for set_input; weights
-        # re-enter natively when the reformed sim's calculate returns
-        # MicroSeries.
-        boost = saving_per_person * s
-        boost_values = np.where(marginal_mask.values, boost.values, 0.0)
-        expected_boost_total = float(boost[marginal_mask].sum())
-        if expected_boost_total <= 0:
-            raise RuntimeError(f"Pass-through {s} produced a zero total wage boost; check masks.")
-
-        reformed = managed_microsimulation()
-        reformed.set_input("employment_income", YEAR, employment_income_values + boost_values)
-
-        applied_boost_total = (
-            float(reformed.calculate("employment_income", YEAR).sum())
-            - baseline_employment_income_total
-        )
-        if abs(applied_boost_total - expected_boost_total) > 1e-6 * expected_boost_total:
-            raise RuntimeError(
-                "set_input did not take effect: applied weighted wage boost "
-                f"£{applied_boost_total:,.0f} != expected £{expected_boost_total:,.0f}."
-            )
-
-        delta_income_tax = (
-            float(reformed.calculate("income_tax", YEAR).sum()) - baseline_income_tax_total
-        )
-        delta_employee_nics = (
-            float(reformed.calculate("ni_employee", YEAR).sum()) - baseline_employee_nics_total
-        )
-        benefits_saved = baseline_benefits_total - float(
-            reformed.calculate("household_benefits", YEAR).sum()
-        )
-
-        fiscal_offset = delta_income_tax + delta_employee_nics + benefits_saved
-
-        pass_through_scenarios.append(
-            {
-                "pass_through_rate": s,
-                "gross_cost_bn": static_cost_marginal / 1e9,
-                "fiscal_offset_bn": fiscal_offset / 1e9,
-                "offset_components_bn": {
-                    "income_tax": delta_income_tax / 1e9,
-                    "employee_nics": delta_employee_nics / 1e9,
-                    "benefits_saved": benefits_saved / 1e9,
-                },
-                "net_cost_bn": (static_cost_marginal - fiscal_offset) / 1e9,
-                "avg_wage_gain": float(boost[marginal_mask].mean()),
-                "poverty": poverty_impact(baseline, reformed, YEAR, age),
-                "inequality": inequality_impact(baseline, reformed, YEAR),
-                "avg_change_by_group": avg_change_by_group(baseline, reformed, YEAR),
-            }
-        )
+    pass_through_scenarios = _run_pass_through_scenarios(
+        rates=args.pass_through,
+        boost_unit_values=np.where(marginal_mask.values, saving_per_person.values, 0.0),
+        gross_cost=static_cost_marginal,
+        n_employees=n_marginal,
+        simulation_factory=managed_microsimulation,
+        baseline=baseline,
+        year=YEAR,
+        age=age,
+        employment_income_values=employment_income_values,
+        baseline_totals=baseline_totals,
+        population_desc="all employed 21-24s",
+    )
 
     # ── Step 7: Labour demand (employment) response ────────────────────────
     # %Δ employment of treated 21-24s ≈ elasticity × %Δ employment cost.
@@ -353,37 +442,188 @@ def run(args: argparse.Namespace) -> None:
 
     print("Step 7: Employment response scenarios...")
     wedge_mask = marginal_mask & (ni_class_1_income > 0)
-    avg_wedge = float(
-        employment_cost_reduction_pct(
-            ni_class_1_income[wedge_mask],
-            SECONDARY_THRESHOLD,
-            UPPER_SECONDARY_THRESHOLD,
-            EMPLOYER_RATE,
-        ).mean()
+    cost_wedge = employment_cost_reduction_pct(
+        ni_class_1_income[wedge_mask],
+        SECONDARY_THRESHOLD,
+        UPPER_SECONDARY_THRESHOLD,
+        EMPLOYER_RATE,
     )
-    employment_scenarios = []
-    for label, elasticity in [
+    avg_wedge = float(cost_wedge.mean())
+    elasticity_scenarios = [
         ("low", args.demand_elasticity_low),
         ("central", args.demand_elasticity_central),
         ("high", args.demand_elasticity_high),
-    ]:
-        employment_gain_pct = abs(elasticity) * avg_wedge
-        new_jobs = employment_gain_pct * n_marginal
-        employment_scenarios.append(
-            {
-                "scenario": label,
-                "demand_elasticity": elasticity,
-                "avg_cost_wedge_pct": avg_wedge,
-                "employment_gain_pct": employment_gain_pct,
-                "new_jobs": new_jobs,
-                "static_cost_per_job": static_cost_marginal / new_jobs,
-            }
+    ]
+    employment_scenarios = _employment_scenario_rows(
+        elasticity_scenarios, avg_wedge, n_marginal, static_cost_marginal
+    )
+
+    # ── Step 8: Targeted population (opt-in: --lfs-path) ───────────────────
+    # Second version of the reform results restricted to employed
+    # 21-24-year-olds who were NEET within the past year, estimated from LFS
+    # 5-quarter longitudinal panels via young_worker_nics.neet. Every
+    # person-level quantity is weighted by the calibrated per-person
+    # probability of being such a recent NEET entrant, rather than selecting
+    # a discrete subsample.
+
+    lfs_paths = args.lfs_path
+    if lfs_paths:
+        print("Step 8: Targeted population (employed 21-24s NEET within the past year)...")
+        from .neet import build_neet_imputation
+
+        person_weights = np.asarray(saving_per_person.weights, dtype=float)
+        saving_values = np.asarray(saving_per_person.values, dtype=float)
+        treated_values = np.asarray(marginal_mask.values, dtype=bool)
+
+        print("    building the LFS NEET imputation (QRF, calibrated)...")
+        imputation = build_neet_imputation(
+            lfs_paths, baseline, YEAR, treated_values, person_weights
+        )
+        prob = np.asarray(imputation.probabilities, dtype=float)
+        banded_prob = np.asarray(imputation.banded_probabilities, dtype=float)
+
+        # Native MicroSeries arithmetic throughout: scaling a MicroSeries by
+        # the per-person probability keeps survey weights attached, so every
+        # aggregate below is the full-population aggregate with each person
+        # contributing prob × their value.
+        targeted_saving = saving_per_person * prob
+        prob_count = MicroSeries(prob, weights=saving_per_person.weights)
+        targeted_cost = float(targeted_saving[marginal_mask].sum())
+        n_targeted = float(prob_count[marginal_mask].sum())
+        if n_targeted <= 0 or targeted_cost <= 0:
+            raise RuntimeError(
+                "NEET imputation produced a zero probability-weighted targeted "
+                "population; check the LFS panel files."
+            )
+        banded_cost = float((saving_per_person * banded_prob)[marginal_mask].sum())
+        print(
+            f"    targeted static cost: £{targeted_cost / 1e9:.2f}bn on "
+            f"{n_targeted / 1e6:.2f}m probability-weighted employees "
+            f"(banded sensitivity £{banded_cost / 1e9:.2f}bn)"
         )
 
-    # ── Step 8: Household calculator (opt-in: --include-calculator) ─────────
+        print("    targeted breakdowns (probability-weighted)...")
+
+        def targeted_breakdown_row(label, level_mask):
+            return {
+                "group": str(label),
+                "n_employees": float(prob_count[level_mask].sum()),
+                "static_cost_bn": float(targeted_saving[level_mask].sum()) / 1e9,
+            }
+
+        # Probabilities are zero outside employed 21-24s, so reusing the
+        # full-population group masks is exact: 18-20 rows are truthfully
+        # zero (the targeted population contains no under-21s).
+        targeted_by_age_band = [
+            targeted_breakdown_row(label, headline_mask & (age >= lo) & (age <= hi))
+            for label, lo, hi in AGE_BANDS
+        ]
+        targeted_by_age = [
+            targeted_breakdown_row(a, headline_mask & (age == a))
+            for a in range(REFORM_AGE_LOWER, REFORM_AGE_UPPER + 1)
+        ]
+        targeted_by_gender = [
+            targeted_breakdown_row(
+                level.replace("_", " ").title(), headline_mask & (gender == level)
+            )
+            for level in sorted(set(gender[headline_mask]))
+        ]
+        targeted_by_country = sorted(
+            (
+                targeted_breakdown_row(
+                    level.replace("_", " ").title(), headline_mask & (country == level)
+                )
+                for level in set(country[headline_mask])
+            ),
+            key=lambda row: row["static_cost_bn"],
+            reverse=True,
+        )
+        targeted_by_region = sorted(
+            (
+                targeted_breakdown_row(_region_label(level), headline_mask & (region == level))
+                for level in set(region[headline_mask])
+            ),
+            key=lambda row: row["static_cost_bn"],
+            reverse=True,
+        )
+        targeted_by_income_decile = [
+            targeted_breakdown_row(decile, headline_mask & (income_decile == decile))
+            for decile in range(1, 11)
+        ]
+        targeted_by_income_quintile = [
+            targeted_breakdown_row(
+                q, headline_mask & (income_decile >= 2 * q - 1) & (income_decile <= 2 * q)
+            )
+            for q in range(1, 6)
+        ]
+        targeted_by_income_quartile = [
+            targeted_breakdown_row(q, headline_mask & (quartile_index == q)) for q in range(1, 5)
+        ]
+
+        # Pass-through: identical machinery, with each treated person's wage
+        # boost scaled by their recent-NEET probability.
+        print("    targeted pass-through scenarios (exact microsimulation)...")
+        targeted_pass_through = _run_pass_through_scenarios(
+            rates=args.pass_through,
+            boost_unit_values=np.where(treated_values, saving_values * prob, 0.0),
+            gross_cost=targeted_cost,
+            n_employees=n_targeted,
+            simulation_factory=managed_microsimulation,
+            baseline=baseline,
+            year=YEAR,
+            age=age,
+            employment_income_values=employment_income_values,
+            baseline_totals=baseline_totals,
+            population_desc="targeted recent-NEET 21-24s",
+        )
+
+        # Employment response: same arithmetic with the probability-weighted
+        # employee count and probability-weighted average cost wedge.
+        print("    targeted employment response scenarios...")
+        # Probability-weighted mean wedge, natively: a MicroSeries whose
+        # weights are w × P(recent NEET) over the NICs-liable 21-24s.
+        wedge_mask_values = np.asarray(wedge_mask.values, dtype=bool)
+        targeted_wedge_weights = (person_weights * prob)[wedge_mask_values]
+        if targeted_wedge_weights.sum() <= 0:
+            raise RuntimeError("Zero probability weight among NICs-liable 21-24 employees.")
+        targeted_avg_wedge = float(
+            MicroSeries(
+                np.asarray(cost_wedge.values, dtype=float), weights=targeted_wedge_weights
+            ).mean()
+        )
+        targeted_employment = _employment_scenario_rows(
+            elasticity_scenarios, targeted_avg_wedge, n_targeted, targeted_cost
+        )
+
+        targeted = {
+            "population_label": POPULATION_LABEL_TARGETED,
+            "entrant_share": float(imputation.entrant_share),
+            "lfs_panels": imputation.panel_summary,
+            "sensitivity_banded_cost_bn": banded_cost / 1e9,
+            "static": {
+                "marginal_cost_bn": targeted_cost / 1e9,
+                "n_marginal_employees": n_targeted,
+                "avg_saving_per_employee": targeted_cost / n_targeted,
+                "by_age_band": targeted_by_age_band,
+                "by_age": targeted_by_age,
+                "by_gender": targeted_by_gender,
+                "by_country": targeted_by_country,
+                "by_region": targeted_by_region,
+                "by_income_decile": targeted_by_income_decile,
+                "by_income_quintile": targeted_by_income_quintile,
+                "by_income_quartile": targeted_by_income_quartile,
+            },
+            "pass_through": targeted_pass_through,
+            "employment": targeted_employment,
+        }
+    else:
+        print("Step 8: Targeted recent-NEET population skipped (pass --lfs-path to build it).")
+        targeted = None
+
+    # ── Step 9: Household calculator (opt-in: --include-calculator) ─────────
 
     if args.include_calculator:
-        print("Step 8: Household calculator lookup...")
+        print("Step 9: Household calculator lookup...")
         person_calculator = build_person_calculator_lookup(
             year=YEAR,
             secondary_threshold=SECONDARY_THRESHOLD,
@@ -395,12 +635,12 @@ def run(args: argparse.Namespace) -> None:
             annual_rent=args.calculator_rent,
         )
     else:
-        print("Step 8: Household calculator skipped (pass --include-calculator to build it).")
+        print("Step 9: Household calculator skipped (pass --include-calculator to build it).")
         person_calculator = None
 
-    # ── Step 9: Write dashboard JSON ────────────────────────────────────────
+    # ── Step 10: Write dashboard JSON ───────────────────────────────────────
 
-    print("Step 9: Writing results JSON...")
+    print("Step 10: Writing results JSON...")
     methods = {
         "static": (
             "Per person in PolicyEngine UK's enhanced-FRS microdata: the statutory "
@@ -418,25 +658,38 @@ def run(args: argparse.Namespace) -> None:
         "poverty": (
             "Baseline and boosted-wage simulations compared on PolicyEngine's absolute "
             "before-housing-costs poverty measure: household equivalised HBAI net "
-            "income against the CPI-uprated DWP threshold, person-weighted headcounts."
+            "income against the CPI-uprated DWP threshold, counted across all people."
         ),
         "distributional": (
             "Households ranked by baseline equivalised HBAI net income into "
-            "person-weighted deciles, quintiles or quartiles (PolicyEngine's published "
-            "convention); the chart shows the weighted average net-income change across "
+            "population deciles, quintiles or quartiles (PolicyEngine's published "
+            "convention); the chart shows the average net-income change across "
             "all households in each group, gainers and non-gainers alike."
         ),
         "employment": (
             "External labour demand elasticities applied to the simulated percentage "
             "fall in total employment cost (gross pay plus employer NICs) for employed "
             "21-24-year-olds; new jobs equal elasticity times average cost wedge times "
-            "the weighted employee count. A partial-equilibrium scenario range, not a "
+            "the employee count. A partial-equilibrium scenario range, not a "
             "forecast."
         ),
         "reform_object": (
             "Build-time cross-check: the static cost is recomputed via a PolicyEngine "
             "Reform object that zero-rates the relieved band for 18-24s; the build "
             "fails if it diverges from the threshold arithmetic by more than 0.1%."
+        ),
+        "targeted_population": (
+            "The targeted variant restricts the relief to employed 21-24-year-olds who "
+            "were NEET within the past year, estimated from pooled LFS 5-quarter "
+            "longitudinal panels (consecutive vintages follow disjoint entry cohorts, "
+            "so pooling never double-counts a person). A panel member counts as a "
+            "recent NEET entrant if they were NEET at any of waves 1-4 and employed at "
+            "wave 5. A quantile regression forest imputes each enhanced-FRS employee's "
+            "probability of being such an entrant from age, gender and earnings, with "
+            "the mean calibrated to the directly measured entrant share among employed "
+            "21-24 panel members. Every reform quantity then counts each employee at that "
+            "probability rather than selecting a discrete subsample; the calibrated level is "
+            "corroborated by the ONS X02 labour-market flows series."
         ),
     }
 
@@ -453,6 +706,7 @@ def run(args: argparse.Namespace) -> None:
                 "central": args.demand_elasticity_central,
                 "high": args.demand_elasticity_high,
             },
+            "lfs_paths": [str(p) for p in lfs_paths] if lfs_paths else None,
         },
         "methods": methods,
         "nics_parameters": {
@@ -463,8 +717,8 @@ def run(args: argparse.Namespace) -> None:
         **sources.as_json(),
         "age_band_note": (
             "Enhanced-FRS calibration constrains 10-year age bands, not single "
-            "years of age, so single-age figures are indicative — weight can "
-            "slide between adjacent ages. The 18-20 / 21-24 split follows the "
+            "years of age, so single-age figures are indicative and can shift "
+            "between adjacent ages. The 18-20 / 21-24 split follows the "
             "under-21 zero-rate boundary and crosses the calibrated age-20 "
             "band edge."
         ),
@@ -477,6 +731,7 @@ def run(args: argparse.Namespace) -> None:
             "reconciliation": reconciliation,
         },
         "reform": {
+            "population_label": POPULATION_LABEL_FULL,
             "static": {
                 "marginal_cost_bn": static_cost_marginal / 1e9,
                 "headline_quantum_bn": static_cost_headline / 1e9,
@@ -486,6 +741,7 @@ def run(args: argparse.Namespace) -> None:
                 "by_age": by_age,
                 "by_gender": by_gender,
                 "by_country": by_country,
+                "by_region": by_region,
                 "by_income_decile": by_income_decile,
                 "by_income_quintile": by_income_quintile,
                 "by_income_quartile": by_income_quartile,
@@ -493,6 +749,7 @@ def run(args: argparse.Namespace) -> None:
             "pass_through": pass_through_scenarios,
             "employment": employment_scenarios,
         },
+        "targeted": targeted,
         "person_calculator": person_calculator,
     }
 

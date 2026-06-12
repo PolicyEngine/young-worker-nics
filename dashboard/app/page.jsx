@@ -50,7 +50,7 @@ function Dashboard() {
       try {
         const response = await fetch("/data/young_worker_nics_results.json");
         if (!response.ok) {
-          throw new Error("young_worker_nics_results.json not found — run the pipeline first");
+          throw new Error("young_worker_nics_results.json not found; run the pipeline first");
         }
         const json = await response.json();
         setData(json);
@@ -77,7 +77,7 @@ function Dashboard() {
     <div className="app-shell min-h-screen">
       <header className="title-row">
         <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-4 md:px-8">
-          <h1>Employer NICs exemption for young workers (18-24)</h1>
+          <h1>Employer NICs exemption for young workers analysis</h1>
         </div>
       </header>
 
@@ -89,7 +89,7 @@ function Dashboard() {
               PolicyEngine
             </a>{" "}
             UK&apos;s microsimulation model to estimate the fiscal cost and employment
-            effects of extending the employer NICs zero rate — which already
+            effects of extending the employer NICs zero rate, which already
             covers{" "}
             {data ? (
               <a
@@ -103,9 +103,10 @@ function Dashboard() {
             ) : (
               "under-21s"
             )}{" "}
-            and apprentices under 25 — to all employees aged 18 to 24, up to the
-            Upper Secondary Threshold
-            {data ? `, for fiscal year ${data.fiscal_year_label}` : ""}. The
+            and apprentices under 25, up to the Upper Secondary Threshold
+            {data ? `, for fiscal year ${data.fiscal_year_label}` : ""}, in two
+            variants: to all employees aged 18 to 24, or targeted only at
+            employees aged 21 to 24 who were NEET within the past year. The
             policy context is set out in Alan Milburn&apos;s Young People and
             Work interim{" "}
             <a
@@ -116,18 +117,18 @@ function Dashboard() {
             >
               review
             </a>{" "}
-            (DWP, May 2026), which found nearly one million 16-24-year-olds — one
-            in eight — not in education, employment or training. The{" "}
+            (DWP, May 2026), which found nearly one million 16-24-year-olds, one
+            in eight, not in education, employment or training. The{" "}
             <TabLink onSelect={() => handleTabChange("reform")}>
               Young-worker NICs exemption
             </TabLink>{" "}
-            tab shows the static cost of the reform and the behavioural results —
-            wage pass-through simulations, poverty and distributional impacts, and
-            labour demand scenarios
+            tab shows the static cost of the reform and the behavioural results:
+            wage pass-through simulations and poverty and distributional impacts
             {data?.person_calculator
               ? ", plus a single-worker household calculator"
               : ""}
-            . The{" "}
+            . It can switch between the full 21-24 population and a targeted
+            population of employees who were recently NEET. The{" "}
             <TabLink onSelect={() => handleTabChange("baseline")}>
               Youth labour market baseline
             </TabLink>{" "}
@@ -184,7 +185,10 @@ function Dashboard() {
             </a>
             {data?.package_versions
               ? `, run on ${Object.entries(data.package_versions)
-                  .map(([name, version]) => `${name} ${version}`)
+                  .map(
+                    ([name, version]) =>
+                      `${name === "policyengine" ? "policyengine.py" : name} ${version}`
+                  )
                   .join(" and ")}`
               : ""}
             .

@@ -32,6 +32,10 @@ import SectionHeading from "./SectionHeading";
 
 const AXIS_STYLE = { fontSize: 12, fill: colors.gray[500] };
 
+// Labour demand response is hidden for now but fully computed by the
+// pipeline and present in the JSON — flip to true to bring the section back.
+const SHOW_LABOUR_DEMAND = false;
+
 // The Household view exists only when the pipeline was run with
 // --include-calculator; the JSON carries person_calculator: null otherwise.
 const SUB_TABS = (hasCalculator) => [
@@ -47,7 +51,14 @@ const DIMENSIONS = [
   { id: "by_age", label: "Age" },
   { id: "by_gender", label: "Gender" },
   { id: "by_country", label: "Country" },
+  { id: "by_region", label: "Region" },
 ];
+
+// Small fiscal lines (e.g. benefits saved) round to £0.0bn at one decimal;
+// show them in £m instead of dropping a real non-zero line.
+function formatBnFine(value) {
+  return Math.abs(value) < 0.05 ? `£${Math.round(value * 1000)}m` : formatBn(value);
+}
 
 function MetricCard({ label, value, note }) {
   return (
@@ -73,6 +84,14 @@ function SwitchRow({ label, children }) {
       </span>
       {children}
     </div>
+  );
+}
+
+function NotComputedNote() {
+  return (
+    <p className="text-sm text-slate-500">
+      Not computed for the targeted population.
+    </p>
   );
 }
 
@@ -246,15 +265,35 @@ function SourceLink({ href, children }) {
   );
 }
 
-function StaticView({ data }) {
-  const [dimension, setDimension] = useState("by_income_quintile");
-  const staticResults = getStatic(data);
-  const rows = staticResults[dimension];
+function StaticView({ data, targeted }) {
+  // Quintile/decile splits are too granular for the probability-weighted
+  // targeted population; only the quartile income split is offered there.
+  const dimensions = targeted
+    ? DIMENSIONS.filter(
+        (d) => d.id !== "by_income_quintile" && d.id !== "by_income_decile"
+      )
+    : DIMENSIONS;
+  const [dimension, setDimension] = useState(
+    targeted ? "by_income_quartile" : "by_income_quintile"
+  );
+  // `targeted` mirrors the data.reform schema; the pipeline may omit some
+  // breakdowns for the targeted population, so every access is null-guarded.
+  const staticResults = targeted ? (targeted.static ?? null) : getStatic(data);
+  const allRows = staticResults?.[dimension];
+  // The targeted population has no under-21s (their relief is already law);
+  // their age rows carry exactly zero weight, so drop empty groups.
+  const rows =
+    targeted && dimension === "by_age" && Array.isArray(allRows)
+      ? allRows.filter((row) => row.n_employees > 0)
+      : allRows;
   const params = data.nics_parameters;
   const rate = formatPct(params.employer_rate * 100);
   const reliefs = data.statutory_unmodelled;
   const hmrc = data.official_stats.hmrc_relief;
   const lfs = data.official_stats.lfs_employment;
+  // Group splits spread the total thinly; one decimal would round the
+  // smaller groups to £0.0bn.
+  const breakdownMoney = (v) => `£${Number(v).toFixed(2)}bn`;
 
   return (
     <>
@@ -262,7 +301,11 @@ function StaticView({ data }) {
         <SectionHeading
           size="lg"
           title="The proposed reform"
-          description={`Employers currently pay NICs at ${rate} on each employee's earnings above the Secondary Threshold (${formatCurrency(params.secondary_threshold_annual)}/year). The reform switches that charge off for all employees aged 18-24 on earnings up to the Upper Secondary Threshold (${formatCurrency(params.upper_secondary_threshold_annual)}/year) — the same design as the existing zero rates for under-21s and apprentices under 25, extended to the whole age group. Nothing changes for the worker's own NICs or take-home pay; the saving goes to the employer.`}
+          description={
+            targeted
+              ? `Employers currently pay NICs at ${rate} on each employee's earnings above the Secondary Threshold (${formatCurrency(params.secondary_threshold_annual)}/year). The targeted reform switches that charge off only for employees aged 21-24 who were NEET (not in employment, education or training) at some point in the past year, on earnings up to the Upper Secondary Threshold (${formatCurrency(params.upper_secondary_threshold_annual)}/year). The same relief design as the existing zero rates for under-21s and apprentices under 25, but aimed at recent labour-market entrants rather than the whole age group. Nothing changes for the worker's own NICs or take-home pay; the saving goes to the employer.`
+              : `Employers currently pay NICs at ${rate} on each employee's earnings above the Secondary Threshold (${formatCurrency(params.secondary_threshold_annual)}/year). The reform switches that charge off for all employees aged 18-24 on earnings up to the Upper Secondary Threshold (${formatCurrency(params.upper_secondary_threshold_annual)}/year), the same design as the existing zero rates for under-21s and apprentices under 25, extended to the whole age group. Nothing changes for the worker's own NICs or take-home pay; the saving goes to the employer.`
+          }
         />
       </div>
 
@@ -286,11 +329,19 @@ function StaticView({ data }) {
           </thead>
           <tbody>
             <tr className="font-semibold">
-              <td>Aged 21-24</td>
+              <td>{targeted ? "Aged 21-24, NEET within the past year" : "Aged 21-24"}</td>
               <td>Secondary to Upper Secondary Threshold</td>
               <td>{rate}</td>
-              <td>0% — the change</td>
+              <td>0%, the change</td>
             </tr>
+            {targeted && (
+              <tr>
+                <td>Aged 21-24, not recently NEET</td>
+                <td>Secondary to Upper Secondary Threshold</td>
+                <td>{rate}</td>
+                <td>{rate} (unchanged)</td>
+              </tr>
+            )}
             <tr>
               <td>Under 21</td>
               <td>Secondary to Upper Secondary Threshold</td>
@@ -348,54 +399,132 @@ function StaticView({ data }) {
         <SectionHeading
           size="lg"
           title="Static fiscal cost"
-          description={`Static means wages, employment and behaviour are held fixed: the cost is simply the employer NICs no longer charged in ${data.fiscal_year_label}, computed person by person on the PolicyEngine UK enhanced FRS. Under-21s are already exempt in law, so the marginal cost comes from employed 21-24-year-olds. What happens when employers respond is in the Population (behavioural) view.`}
+          description={
+            targeted
+              ? `Static means wages, employment and behaviour are held fixed: the cost is the employer NICs no longer charged in ${data.fiscal_year_label}, computed person by person on the PolicyEngine UK enhanced FRS, with each employed 21-24-year-old counted at their imputed probability of having been NEET within the past year. What happens when employers respond is in the Population (behavioural) view.`
+              : `Static means wages, employment and behaviour are held fixed: the cost is simply the employer NICs no longer charged in ${data.fiscal_year_label}, computed person by person on the PolicyEngine UK enhanced FRS. Under-21s are already exempt in law, so the marginal cost comes from employed 21-24-year-olds. What happens when employers respond is in the Population (behavioural) view.`
+          }
         />
       </div>
 
       <section className="section-card">
         <SectionHeading
-          title="Headline results"
-          description={`Figures are for ${data.fiscal_year_label}. Each card notes the nearest official benchmark.`}
+          title={`Headline results, ${data.fiscal_year_label}`}
+          description={
+            targeted ? null : "Each card notes the nearest official benchmark."
+          }
         />
+        {staticResults?.marginal_cost_bn == null ? (
+          <NotComputedNote />
+        ) : (
         <div className="grid gap-4 md:grid-cols-3">
           <MetricCard
-            label="Static cost — relieved band for employed 21-24s"
-            value={formatBn(staticResults.marginal_cost_bn)}
+            label={
+              targeted
+                ? "Static cost: relieved band for recent-NEET employed 21-24s"
+                : "Static cost: relieved band for employed 21-24s"
+            }
+            value={`£${Number(staticResults.marginal_cost_bn).toFixed(2)}bn`}
             note={
-              <>
-                Compare: <SourceLink href={hmrc.source}>HMRC</SourceLink>{" "}
-                scores the existing under-21 zero rate at{" "}
-                {formatBn(hmrc.under_21_relief_forecast_2025_26_bn)} for{" "}
-                {hmrc.forecast_period_label}.
-              </>
+              targeted ? null : (
+                <>
+                  Compare: <SourceLink href={hmrc.source}>HMRC</SourceLink>{" "}
+                  scores the existing under-21 zero rate at{" "}
+                  {formatBn(hmrc.under_21_relief_forecast_2025_26_bn)} for{" "}
+                  {hmrc.forecast_period_label}.
+                </>
+              )
             }
           />
           <MetricCard
-            label="Employees newly exempt — employed 21-24-year-olds"
-            value={formatCount(staticResults.n_marginal_employees)}
+            label={
+              targeted
+                ? "Employees newly exempt: recent-NEET employed 21-24-year-olds"
+                : "Employees newly exempt: employed 21-24-year-olds"
+            }
+            value={
+              staticResults.n_marginal_employees != null
+                ? `${(staticResults.n_marginal_employees / 1e6).toFixed(2)}m`
+                : "—"
+            }
             note={
-              <>
-                Compare: {formatCount(lfs.employment_18_24)} 18-24-year-olds in
-                employment, {lfs.period_label} (ONS{" "}
-                <SourceLink href={lfs.source}>LFS</SourceLink>), which includes
-                the self-employed and 18-20-year-olds.
-              </>
+              targeted ? null : (
+                <>
+                  Compare: {formatCount(lfs.employment_18_24)} 18-24-year-olds in
+                  employment, {lfs.period_label} (ONS{" "}
+                  <SourceLink href={lfs.source}>LFS</SourceLink>), which includes
+                  the self-employed and 18-20-year-olds.
+                </>
+              )
             }
           />
           <MetricCard
             label="Average employer NICs saving per newly exempt employee"
-            value={formatCurrency(staticResults.avg_saving_per_employee)}
+            value={
+              staticResults.avg_saving_per_employee != null
+                ? formatCurrency(staticResults.avg_saving_per_employee)
+                : "—"
+            }
           />
         </div>
+        )}
+        {targeted && (
+          <details className="mt-4">
+            <summary className="cursor-pointer text-sm font-medium text-slate-600">
+              How the recent-NEET population was estimated
+            </summary>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              The ONS{" "}
+              {data.official_stats.lfs_5q_panels?.survey_source ? (
+                <SourceLink href={data.official_stats.lfs_5q_panels.survey_source}>
+                  Labour Force Survey
+                </SourceLink>
+              ) : (
+                "Labour Force Survey"
+              )}{" "}
+              interviews each respondent five times over a year, so it records
+              who moved from NEET status (not in employment, education or
+              training) into work.
+              {targeted.lfs_panels != null && targeted.entrant_share != null && (
+                <>
+                  {" "}
+                  Pooling {targeted.lfs_panels.count} of these{" "}
+                  {data.official_stats.lfs_5q_panels?.source ? (
+                    <SourceLink href={data.official_stats.lfs_5q_panels.source}>
+                      panels
+                    </SourceLink>
+                  ) : (
+                    "panels"
+                  )}{" "}
+                  ({targeted.lfs_panels.period}; {targeted.lfs_panels.studies})
+                  shows that{" "}
+                  {formatPct(targeted.entrant_share * 100, 1)} of employed
+                  21-24-year-olds were NEET at some point in the previous year.
+                </>
+              )}{" "}
+              A quantile random forest trained on those panel members gives
+              every employed 21-24-year-old in the model their own probability
+              of being such a recent entrant, predicted from age, sex and
+              earnings and calibrated so the average matches the measured
+              share. Every figure above counts each employee at that
+              probability. Full detail is on the Methodology tab.
+            </p>
+          </details>
+        )}
       </section>
 
       <section className="section-card">
         <SectionHeading
           title="Detailed breakdown"
-          description={`Employer NICs forgone in ${data.fiscal_year_label} in the relieved band across all 18-24-year-old employees, split by group. Group totals sum to the full 18-24 quantum of ${formatBn(staticResults.headline_quantum_bn)} — larger than the ${formatBn(staticResults.marginal_cost_bn)} headline cost because they include 18-20-year-olds, whose relief is already law.${dimension === "by_age" ? ` ${data.age_band_note}` : ""}`}
+          description={
+            staticResults?.headline_quantum_bn != null &&
+            staticResults?.marginal_cost_bn != null
+              ? `Employer NICs forgone in ${data.fiscal_year_label} in the relieved band across all 18-24-year-old employees, split by group. Group totals sum to the full 18-24 quantum of ${formatBn(staticResults.headline_quantum_bn)}, larger than the ${formatBn(staticResults.marginal_cost_bn)} headline cost because they include 18-20-year-olds, whose relief is already law.${dimension === "by_age" ? ` ${data.age_band_note}` : ""}`
+              : `Employer NICs forgone in ${data.fiscal_year_label} in the relieved band, split by group.${dimension === "by_age" ? ` ${data.age_band_note}` : ""}`
+          }
         />
         <div className="mb-4 flex flex-wrap gap-2">
-          {DIMENSIONS.map((d) => (
+          {dimensions.map((d) => (
             <button
               key={d.id}
               className={`selector-chip compact ${dimension === d.id ? "active" : ""}`}
@@ -405,51 +534,96 @@ function StaticView({ data }) {
             </button>
           ))}
         </div>
-        <div className="h-[380px] w-full">
-          <ResponsiveContainer>
-            <BarChart data={rows} margin={{ top: 10, right: 20, bottom: 5, left: 10 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={colors.border.light} />
-              <XAxis dataKey="group" tick={AXIS_STYLE} />
-              <YAxis
-                tick={AXIS_STYLE}
-                tickFormatter={(v) => formatBn(v)}
-                tickLine={false}
-                axisLine={false}
-              />
-              <Tooltip formatter={(v) => formatBn(v)} />
-              <Bar
-                dataKey="static_cost_bn"
-                name="Static cost"
-                fill={colors.primary[600]}
-                radius={[6, 6, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        <ChartLogo />
+        {Array.isArray(rows) && rows.length > 0 ? (
+          <>
+            <div className="h-[380px] w-full">
+              <ResponsiveContainer>
+                <BarChart data={rows} margin={{ top: 10, right: 20, bottom: 5, left: 10 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={colors.border.light} />
+                  <XAxis dataKey="group" tick={AXIS_STYLE} />
+                  <YAxis
+                    tick={AXIS_STYLE}
+                    tickFormatter={(v) => breakdownMoney(v)}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <Tooltip formatter={(v) => breakdownMoney(v)} />
+                  <Bar
+                    dataKey="static_cost_bn"
+                    name="Static cost"
+                    fill={colors.primary[600]}
+                    radius={[6, 6, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <ChartLogo />
+          </>
+        ) : (
+          <NotComputedNote />
+        )}
       </section>
     </>
   );
 }
 
-function BehaviouralView({ data }) {
-  const passThrough = getPassThroughScenarios(data);
-  const employment = getEmploymentScenarios(data);
+function BehaviouralView({ data, targeted }) {
+  // `targeted` mirrors the data.reform schema; the pipeline may omit some
+  // result blocks for the targeted population, so every access is null-guarded.
+  const passThrough =
+    (targeted ? targeted.pass_through : getPassThroughScenarios(data)) ?? [];
+  const employment =
+    (targeted ? targeted.employment : getEmploymentScenarios(data)) ?? [];
   const obr = data.official_stats.obr;
   const evidence = data.official_stats.elasticity_evidence;
+  const defaultScenario =
+    passThrough.find(
+      (s) => s.pass_through_rate === obr.medium_term_pass_through
+    ) ||
+    passThrough.find((s) => s.pass_through_rate > 0) ||
+    passThrough[0] ||
+    null;
   const [scenarioRate, setScenarioRate] = useState(
-    (
-      passThrough.find(
-        (s) => s.pass_through_rate === obr.medium_term_pass_through
-      ) ||
-      passThrough.find((s) => s.pass_through_rate > 0) ||
-      passThrough[0]
-    ).pass_through_rate
+    defaultScenario ? defaultScenario.pass_through_rate : null
   );
-  const [grouping, setGrouping] = useState("quintiles");
-  const scenario = passThrough.find(
-    (s) => s.pass_through_rate === scenarioRate
-  );
+  // Quintile/decile splits are too granular for the probability-weighted
+  // targeted population; only the quartile split is offered there.
+  const groupings = targeted ? ["quartiles"] : ["quintiles", "quartiles", "deciles"];
+  const [grouping, setGrouping] = useState(targeted ? "quartiles" : "quintiles");
+  const scenario =
+    passThrough.find((s) => s.pass_through_rate === scenarioRate) ||
+    defaultScenario;
+
+  if (scenario == null) {
+    // The pipeline omitted pass-through runs for this population.
+    return (
+      <>
+        <div className="pt-2">
+          <SectionHeading size="lg" title="Wage pass-through" />
+        </div>
+        <section className="section-card">
+          <NotComputedNote />
+        </section>
+        {SHOW_LABOUR_DEMAND &&
+          (employment.length > 0 ? (
+            <EmploymentSection
+              data={data}
+              evidence={evidence}
+              employment={employment}
+            />
+          ) : (
+            <>
+              <div className="pt-2">
+                <SectionHeading size="lg" title="Labour demand response" />
+              </div>
+              <section className="section-card">
+                <NotComputedNote />
+              </section>
+            </>
+          ))}
+      </>
+    );
+  }
 
   return (
     <>
@@ -565,9 +739,12 @@ function BehaviouralView({ data }) {
       <section className="section-card">
         <SectionHeading
           title="Composition of the fiscal offset"
-          description={`Decomposition of the fiscal offset under the selected ${formatPct(scenario.pass_through_rate * 100, 0)} pass-through scenario. With zero pass-through no saving reaches workers' pay, so there is no offset, poverty or distributional effect to show — those results exist only for the scenarios with positive pass-through.`}
+          description={`Decomposition of the fiscal offset under the selected ${formatPct(scenario.pass_through_rate * 100, 0)} pass-through scenario. With zero pass-through no saving reaches workers' pay, so there is no offset, poverty or distributional effect to show; those results exist only for the scenarios with positive pass-through.`}
         />
-        {scenario.pass_through_rate > 0 && (
+        {scenario.pass_through_rate > 0 &&
+          (scenario.offset_components_bn == null ? (
+            <NotComputedNote />
+          ) : (
           <>
             <table className="data-table">
               <thead>
@@ -583,18 +760,18 @@ function BehaviouralView({ data }) {
                 </tr>
                 <tr>
                   <td>Income tax on passed-through wages</td>
-                  <td>{formatBn(scenario.offset_components_bn.income_tax)}</td>
+                  <td>{formatBnFine(scenario.offset_components_bn.income_tax)}</td>
                 </tr>
                 <tr>
                   <td>Employee NICs on passed-through wages</td>
                   <td>
-                    {formatBn(scenario.offset_components_bn.employee_nics)}
+                    {formatBnFine(scenario.offset_components_bn.employee_nics)}
                   </td>
                 </tr>
                 <tr>
                   <td>Benefits saved</td>
                   <td>
-                    {formatBn(scenario.offset_components_bn.benefits_saved)}
+                    {formatBnFine(scenario.offset_components_bn.benefits_saved)}
                   </td>
                 </tr>
                 <tr>
@@ -616,7 +793,7 @@ function BehaviouralView({ data }) {
               </tbody>
             </table>
           </>
-        )}
+          ))}
       </section>
 
       {scenario.pass_through_rate > 0 && (
@@ -625,6 +802,17 @@ function BehaviouralView({ data }) {
             title="Poverty impact"
             description={`Absolute poverty before housing costs in ${data.fiscal_year_label} under the ${formatPct(scenario.pass_through_rate * 100, 0)} pass-through scenario, baseline versus reform. Poverty is measured on household income, so people who share a household with a young worker whose pay rises can move out of poverty too.`}
           />
+          {targeted ? (
+            <p className="text-sm text-slate-500">
+              Not reported for the targeted population. Poverty is a threshold
+              measure: it requires each entrant&apos;s actual wage gain, whereas
+              the targeted simulation spreads the boost in small per-person
+              probability shares across all employees, which cannot move
+              households across the poverty line.
+            </p>
+          ) : scenario.poverty == null ? (
+            <NotComputedNote />
+          ) : (
           <div className="grid gap-4 md:grid-cols-3">
             <MetricCard
               label="Poverty rate change, all people (absolute, before housing costs)"
@@ -640,6 +828,7 @@ function BehaviouralView({ data }) {
               note={`${formatCount(scenario.poverty.people_lifted_18_24)} are themselves aged 18-24; the rest share a household with a young worker whose pay rises.`}
             />
           </div>
+          )}
         </section>
       )}
 
@@ -647,19 +836,25 @@ function BehaviouralView({ data }) {
         <section className="section-card">
           <SectionHeading
             title="Average household net income change"
-            description={`Weighted average change in household net income in ${data.fiscal_year_label} under the ${formatPct(scenario.pass_through_rate * 100, 0)} pass-through scenario, across all households in each baseline income group (gainers and non-gainers alike).`}
+            description={`Average change in household net income in ${data.fiscal_year_label} under the ${formatPct(scenario.pass_through_rate * 100, 0)} pass-through scenario, across all households in each baseline income group (gainers and non-gainers alike).`}
           />
-          <div className="mb-4 flex flex-wrap gap-2">
-            {["quintiles", "quartiles", "deciles"].map((g) => (
-              <button
-                key={g}
-                className={`selector-chip compact capitalize ${grouping === g ? "active" : ""}`}
-                onClick={() => setGrouping(g)}
-              >
-                {g}
-              </button>
-            ))}
-          </div>
+          {groupings.length > 1 && (
+            <div className="mb-4 flex flex-wrap gap-2">
+              {groupings.map((g) => (
+                <button
+                  key={g}
+                  className={`selector-chip compact capitalize ${grouping === g ? "active" : ""}`}
+                  onClick={() => setGrouping(g)}
+                >
+                  {g}
+                </button>
+              ))}
+            </div>
+          )}
+          {scenario.avg_change_by_group?.[grouping] == null ? (
+            <NotComputedNote />
+          ) : (
+          <>
           <div className="h-[380px] w-full">
             <ResponsiveContainer>
               <BarChart
@@ -700,9 +895,35 @@ function BehaviouralView({ data }) {
             </ResponsiveContainer>
           </div>
           <ChartLogo />
+          </>
+          )}
         </section>
       )}
 
+      {SHOW_LABOUR_DEMAND &&
+        (employment.length > 0 ? (
+          <EmploymentSection
+            data={data}
+            evidence={evidence}
+            employment={employment}
+          />
+        ) : (
+          <>
+            <div className="pt-2">
+              <SectionHeading size="lg" title="Labour demand response" />
+            </div>
+            <section className="section-card">
+              <NotComputedNote />
+            </section>
+          </>
+        ))}
+    </>
+  );
+}
+
+function EmploymentSection({ data, evidence, employment }) {
+  return (
+    <>
       <div className="pt-2">
         <SectionHeading
           size="lg"
@@ -714,8 +935,8 @@ function BehaviouralView({ data }) {
               not pass on lowers the total cost of employing a 21-24-year-old,
               and the youth payroll-tax literature provides demand elasticities
               that translate that cost fall into additional jobs. The two
-              channels trade off against each other — money passed to wages
-              cannot also cut employment costs — so this section and the
+              channels trade off against each other (money passed to wages
+              cannot also cut employment costs), so this section and the
               pass-through section bracket the policy&apos;s possible effects
               rather than adding together. The elasticity arithmetic leaves out
               substitution from workers just outside the age band, wider
@@ -796,7 +1017,7 @@ function BehaviouralView({ data }) {
                 },
                 {
                   label: "New jobs",
-                  tip: "Employment gain applied to the weighted count of employed 21-24-year-olds.",
+                  tip: "Employment gain applied to the count of employed 21-24-year-olds.",
                 },
                 {
                   label: "Static cost per job",
@@ -825,9 +1046,22 @@ function BehaviouralView({ data }) {
   );
 }
 
+// The targeted-population toggle exists only when the pipeline was run with
+// LFS data; the JSON carries targeted: null (or omits it) otherwise.
+const POPULATIONS = [
+  { id: "all", label: "All employees aged 21-24" },
+  { id: "neet", label: "Recent NEETs only" },
+];
+
 export default function ReformTab({ data }) {
   const hasCalculator = data.person_calculator !== null;
+  const targeted = data.targeted ?? null;
   const [subTab, setSubTab] = useState(hasCalculator ? "household" : "static");
+  const [population, setPopulation] = useState(targeted !== null ? "neet" : "all");
+  // Population views only; the Household calculator is per-person.
+  const populationView = subTab === "static" || subTab === "behavioural";
+  const useTargeted = targeted !== null && population === "neet";
+  const activeTargeted = useTargeted ? targeted : null;
 
   return (
     <div className="space-y-6">
@@ -843,9 +1077,35 @@ export default function ReformTab({ data }) {
         ))}
       </div>
 
+      {targeted !== null && populationView && (
+        <div className="flex flex-wrap items-center gap-2">
+          {POPULATIONS.map((p) => (
+            <button
+              key={p.id}
+              className={`toggle-button ${population === p.id ? "active" : ""}`}
+              onClick={() => setPopulation(p.id)}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {subTab === "household" && <HouseholdView data={data} />}
-      {subTab === "static" && <StaticView data={data} />}
-      {subTab === "behavioural" && <BehaviouralView data={data} />}
+      {subTab === "static" && (
+        <StaticView
+          key={useTargeted ? "targeted" : "all"}
+          data={data}
+          targeted={activeTargeted}
+        />
+      )}
+      {subTab === "behavioural" && (
+        <BehaviouralView
+          key={useTargeted ? "targeted" : "all"}
+          data={data}
+          targeted={activeTargeted}
+        />
+      )}
     </div>
   );
 }

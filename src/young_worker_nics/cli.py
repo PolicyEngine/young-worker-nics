@@ -59,6 +59,18 @@ def build_parser() -> argparse.ArgumentParser:
         help=DEMAND_ELASTICITIES["high"].description,
     )
     parser.add_argument(
+        "--lfs-path",
+        nargs="+",
+        default=None,
+        help=(
+            "One or more LFS 5-quarter longitudinal panel .tab files "
+            "(e.g. ~/Downloads/UKDA-*-tab/tab/*.tab). When given, the pipeline "
+            "also builds the targeted-population results (employed 21-24s who "
+            "were NEET within the past year); otherwise the JSON's 'targeted' "
+            "section is null."
+        ),
+    )
+    parser.add_argument(
         "--include-calculator",
         action="store_true",
         help=(

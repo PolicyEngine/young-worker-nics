@@ -25,14 +25,18 @@ export default function BaselineTab({ data }) {
         <SectionHeading
           size="lg"
           title="The youth labour market"
-          description="Who the policy is for, and who it is paid on. The NEET group is the policy's target; the employed group is where the exemption flows — the gap between the two is why much of a blanket hiring subsidy goes to employment that would exist anyway."
+          description="Who the policy is for, and who it is paid on. The NEET group is the policy's target; the employed group is where the exemption flows. The gap between the two is why much of a blanket hiring subsidy goes to employment that would exist anyway, and why the reform tab also prices a targeted variant covering only employees who were recently NEET."
         />
       </div>
 
       <section className="section-card">
         <SectionHeading
           title="Youth population by activity status"
-          description="Every young person is in exactly one of three states: in education, in employment, or in neither (NEET). A student with a part-time job counts as both in education and in employment, and is never NEET. Model counts from the PolicyEngine UK enhanced FRS; the official column from the ONS."
+          description={`Every young person is in exactly one of three states: in education, in employment, or in neither (NEET). A student with a part-time job counts as both in education and in employment, and is never NEET. Model counts from the PolicyEngine UK enhanced FRS; the official column from the ONS.${
+            data.targeted?.entrant_share != null
+              ? ` These states churn: in the LFS five-quarter panels, ${formatPct(data.targeted.entrant_share * 100, 1)} of employed 21-24-year-olds were NEET at some point in the previous year, the entrant share behind the reform tab's targeted variant.`
+              : ""
+          }`}
         />
         <table className="data-table">
           <thead>
@@ -127,7 +131,9 @@ export default function BaselineTab({ data }) {
               </a>
               ) switches that charge off between the Secondary and Upper Secondary
               Thresholds; the full rate still applies above the UST. The reform
-              extends this design to all employees aged 18-24.
+              extends this design either to all employees aged 18-24, or, in the
+              targeted variant, only to 21-24-year-olds who were NEET within the
+              past year.
             </>
           }
         />
@@ -152,7 +158,7 @@ export default function BaselineTab({ data }) {
       <section className="section-card">
         <SectionHeading
           title="Employer NICs paid on young workers"
-          description={`Modelled employer NICs in ${data.fiscal_year_label} in the relieved band — earnings between the Secondary and Upper Secondary Thresholds, the only part the zero rate touches — by age band. The 18-20 amount is not actually paid in practice (under-21s are already exempt in law), so the 21-24 row is the reform's marginal static cost. ${data.age_band_note}`}
+          description={`Modelled employer NICs in ${data.fiscal_year_label} in the relieved band (earnings between the Secondary and Upper Secondary Thresholds, the only part the zero rate touches) by age band. The 18-20 amount is not actually paid in practice (under-21s are already exempt in law), so the 21-24 row is the reform's marginal static cost. ${data.age_band_note}`}
         />
         <table className="data-table">
           <thead>
@@ -169,10 +175,17 @@ export default function BaselineTab({ data }) {
               <td>{formatBn(band1820.static_cost_bn)}</td>
             </tr>
             <tr className="font-semibold">
-              <td>{band2124.group} — the reform&apos;s marginal static cost</td>
+              <td>{band2124.group}, the reform&apos;s marginal static cost</td>
               <td>{formatCount(band2124.n_employees)}</td>
               <td>{formatBn(data.reform.static.marginal_cost_bn)}</td>
             </tr>
+            {data.targeted?.static && (
+              <tr>
+                <td>of which NEET within the past year (the targeted variant)</td>
+                <td>{formatCount(data.targeted.static.n_marginal_employees)}</td>
+                <td>{formatBn(data.targeted.static.marginal_cost_bn)}</td>
+              </tr>
+            )}
             <tr>
               <td>All 18-24, relieved band</td>
               <td>{formatCount(baseline.n_employees_18_24)}</td>
@@ -281,7 +294,7 @@ export default function BaselineTab({ data }) {
                   params.secondary_threshold_annual +
                     data.reform.static.avg_saving_per_employee / params.employer_rate
                 )}{" "}
-                among employed 21-24-year-olds — between ASHE&apos;s all-employee means
+                among employed 21-24-year-olds, between ASHE&apos;s all-employee means
                 for the 18-21 and 22-29 bands that straddle it.
               </td>
             </tr>

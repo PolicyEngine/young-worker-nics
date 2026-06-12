@@ -22,6 +22,11 @@ MARGINAL_AGE_LOWER = 21
 
 WEEKS_PER_YEAR = 52  # PolicyEngine stores NICs thresholds per week
 
+# LFS adult-interview floor and conventional working-age ceiling, bounding
+# the NEET-imputation donor pool (employed at wave 5, working age).
+LFS_ADULT_AGE_FLOOR = 16
+WORKING_AGE_CEILING = 65  # exclusive
+
 
 @dataclass(frozen=True)
 class Source:
@@ -175,6 +180,15 @@ OFFICIAL_STATS = {
         ),
         "source": "https://www.gov.uk/government/statistics/tax-reliefs/tax-relief-statistics-january-2026",
     },
+    "lfs_5q_panels": {
+        "description": (
+            "LFS five-quarter longitudinal datasets (UK Data Service series), "
+            "the panels behind the NEET-history imputation; survey_source is "
+            "the ONS Labour Force Survey homepage."
+        ),
+        "source": "https://datacatalogue.ukdataservice.ac.uk/series/series/2000026",
+        "survey_source": "https://www.ons.gov.uk/surveys/informationforhouseholdsandindividuals/householdandindividualsurveys/labourforcesurvey",
+    },
     "lfs_employment": {
         "employment_18_24": 3_444_000,
         "employment_rate_18_24": 0.586,
@@ -230,7 +244,7 @@ OFFICIAL_STATS = {
             "OBR supplementary forecast release (May 2025): HMRC's static "
             "costing of the April 2025 employer NICs package (15% rate, "
             "£5,000 Secondary Threshold, Employment Allowance changes), "
-            "certified by the OBR — Table 1.5. The October 2024 EFO judged "
+            "certified by the OBR (Table 1.5). The October 2024 EFO judged "
             "the rise would reduce labour supply by around 50,000 "
             "average-hours equivalents; the OBR publishes no youth-specific "
             "labour demand elasticity."
