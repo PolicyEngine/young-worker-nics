@@ -9,6 +9,7 @@ const METHOD_LABELS = {
   pass_through: "Wage pass-through and fiscal offsets",
   poverty: "Poverty impact",
   distributional: "Distributional impact",
+  public_sector_exclusion: "Excluding public-sector employers",
   // employment: hidden with the labour demand response section; restore the
   // label here when that section returns to the reform tab.
   // reform_object: hidden — internal build-time cross-check, not a result.

@@ -102,6 +102,83 @@ export default function BaselineTab({ data }) {
         </table>
       </section>
 
+      {baseline.public_private_employment && (
+        <section className="section-card">
+          <SectionHeading
+            title="Public and private sector employment"
+            description="Whether a worker's main job is in the public sector (NHS, state schools, councils, civil service, armed forces) or the private sector, from the FRS main-job sector. This matters for the reform: employer NICs on a public-sector job are paid by government to government, so exempting them nets out of the consolidated public finances — the reform tab's 'exclude public-sector employers' toggle removes them from the cost. Young workers skew heavily private."
+          />
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Measure</th>
+                <th>Model</th>
+                <th>Official</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Public-sector employees (all ages)</td>
+                <td>{formatCount(baseline.public_private_employment.n_public_all_employees)}</td>
+                <td>
+                  ~
+                  <a
+                    href={data.official_stats.public_sector_employment.source}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {formatCount(data.official_stats.public_sector_employment.total_uk)}
+                  </a>{" "}
+                  (ONS PSE, {data.official_stats.public_sector_employment.period_label})
+                </td>
+              </tr>
+              <tr>
+                <td>Public share of all employees</td>
+                <td>
+                  {formatPct(
+                    (baseline.public_private_employment.n_public_all_employees /
+                      (baseline.public_private_employment.n_public_all_employees +
+                        baseline.public_private_employment.n_private_all_employees)) *
+                      100,
+                    1,
+                  )}
+                </td>
+                <td>
+                  ~
+                  <a
+                    href={data.official_stats.public_sector_employment.source}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {formatPct(
+                      data.official_stats.public_sector_employment.share_of_total_employment * 100,
+                      1,
+                    )}
+                  </a>{" "}
+                  (ONS)
+                </td>
+              </tr>
+              <tr>
+                <td>Public-sector employees, 18-24</td>
+                <td>{formatCount(baseline.public_private_employment.n_public_18_24)}</td>
+                <td>—</td>
+              </tr>
+              <tr>
+                <td>Public share among 18-24 employees</td>
+                <td>{formatPct(baseline.public_private_employment.public_share_18_24 * 100, 1)}</td>
+                <td>—</td>
+              </tr>
+            </tbody>
+          </table>
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            The model&apos;s all-ages public-sector total sits close to the ONS Public
+            Sector Employment headcount. ONS does not publish a public/private split
+            for 18-24-year-olds specifically; the model&apos;s low youth public share
+            reflects that NHS, teaching and civil-service roles skew older.
+          </p>
+        </section>
+      )}
+
       <div className="pt-2">
         <SectionHeading
           size="lg"

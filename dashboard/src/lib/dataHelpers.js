@@ -24,12 +24,3 @@ export function getBaseline(data) {
 export function getNicsParameters(data) {
   return data.nics_parameters;
 }
-
-export function getCalculatorProfile(data, age, region, renter) {
-  const key = `age${age}|${region}|rent${renter ? 1 : 0}`;
-  const profile = data.person_calculator.profiles[key];
-  if (!profile) {
-    throw new Error(`profile ${key} missing from young_worker_nics_results.json`);
-  }
-  return profile;
-}

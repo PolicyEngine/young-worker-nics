@@ -88,14 +88,21 @@ def derive_period(lfs_paths: list[str]) -> str:
 
 
 def derive_studies(lfs_paths: list[str]) -> str:
-    """UKDA study numbers parsed from the file paths, e.g. 'UKDA SN 9133, 9482'."""
+    """UKDA study numbers parsed from the file paths, e.g. 'UKDA SN 9133, 9482'.
+
+    Falls back to the panel filenames when the paths carry no UKDA-XXXX study
+    number (e.g. the .tab files were relocated out of their UKDA directories),
+    so the build does not depend on the original UKDA folder layout.
+    """
     numbers = set()
     for path in lfs_paths:
         match = _STUDY_RE.search(str(path))
-        if not match:
-            raise ValueError(f"Cannot parse the UKDA study number from path: {path}")
-        numbers.add(int(match[1]))
-    return "UKDA SN " + ", ".join(str(n) for n in sorted(numbers))
+        if match:
+            numbers.add(int(match[1]))
+    if numbers:
+        return "UKDA SN " + ", ".join(str(n) for n in sorted(numbers))
+    names = sorted(Path(p).stem for p in lfs_paths)
+    return "LFS 5-quarter longitudinal panels: " + ", ".join(names)
 
 
 def neet_transition_targets(panel: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:

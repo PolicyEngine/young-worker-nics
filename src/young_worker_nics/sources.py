@@ -97,16 +97,6 @@ DEMAND_ELASTICITIES = {
     ),
 }
 
-CALCULATOR_ANNUAL_RENT = Source(
-    value=9_600,
-    description=(
-        "Illustrative private rent for the renter calculator profile "
-        "(£800/month, around the level of a modest one-bed/room outside "
-        "London)."
-    ),
-    url="https://www.ons.gov.uk/economy/inflationandpriceindices/bulletins/privaterentandhousepricesuk/latest",
-)
-
 # ── Statutory facts PolicyEngine UK does not model ───────────────────────────
 
 EMPLOYMENT_ALLOWANCE = Source(
@@ -251,6 +241,22 @@ OFFICIAL_STATS = {
         ),
         "source": "https://obr.uk/supplementary-forecast-information-on-static-costing-of-changes-to-employer-national-insurance-contributions/",
     },
+    "public_sector_employment": {
+        "total_uk": 5_940_000,
+        "share_of_total_employment": 0.176,
+        "period_label": "2024",
+        "release_label": "ONS Public Sector Employment, UK",
+        "description": (
+            "ONS Public Sector Employment (PSE), UK headcount: people employed "
+            "by central government, local government and public corporations "
+            "(NHS, state schools, councils, civil service, armed forces). The "
+            "public sector is about 17-18% of total UK employment. The model "
+            "identifies public-sector employees from the FRS main-job sector "
+            "(employment_sector); young (18-24) workers skew private, so their "
+            "public share sits well below the all-ages figure."
+        ),
+        "source": "https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/publicsectorpersonnel/bulletins/publicsectoremployment/latest",
+    },
     "elasticity_evidence": {
         "egebark_kaunitz_2018": -0.31,
         "egebark_kaunitz_url": "https://doi.org/10.1016/j.labeco.2018.10.001",
@@ -277,7 +283,6 @@ def as_json() -> dict:
         "assumptions": {
             "pass_through_scenarios": [asdict(s) for s in PASS_THROUGH_SCENARIOS],
             "demand_elasticities": {k: asdict(v) for k, v in DEMAND_ELASTICITIES.items()},
-            "calculator_annual_rent": asdict(CALCULATOR_ANNUAL_RENT),
         },
         "statutory_unmodelled": {
             "employment_allowance": asdict(EMPLOYMENT_ALLOWANCE),
