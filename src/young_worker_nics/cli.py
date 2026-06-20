@@ -14,7 +14,6 @@ import argparse
 
 from .pipeline import run
 from .sources import (
-    CALCULATOR_ANNUAL_RENT,
     DEMAND_ELASTICITIES,
     PASS_THROUGH_SCENARIOS,
 )
@@ -33,6 +32,36 @@ def build_parser() -> argparse.ArgumentParser:
         description="Generate dashboard-ready young-worker NICs exemption results.",
     )
     parser.add_argument("--year", type=int, required=True)
+    parser.add_argument(
+        "--dataset",
+        default=None,
+        help=(
+            "Path to an enhanced-FRS .h5 to simulate on directly (bypassing "
+            "the policyengine bundle). Required for the public/private employer "
+            "split, which needs the employment_sector variable (policyengine-uk "
+            ">=2.89.2 and an enhanced FRS built from policyengine-uk-data "
+            ">=1.56.5). When omitted, the managed bundle simulation is used and "
+            "the public-sector split is skipped."
+        ),
+    )
+    parser.add_argument(
+        "--populace",
+        action="store_true",
+        help=(
+            "Build BOTH baseline and reform simulations through the "
+            "policyengine.py wrapper on the Populace UK dataset (via "
+            "managed_microsimulation with allow_unmanaged=True), instead of "
+            "the enhanced-FRS direct path. Provides employment_sector, so the "
+            "public/private employer split is produced. Mutually exclusive "
+            "with --dataset."
+        ),
+    )
+    parser.add_argument(
+        "--populace-year",
+        type=int,
+        default=2023,
+        help="Populace UK dataset vintage to load when --populace is set (default 2023).",
+    )
     parser.add_argument(
         "--pass-through",
         type=float,
@@ -70,29 +99,13 @@ def build_parser() -> argparse.ArgumentParser:
             "section is null."
         ),
     )
-    parser.add_argument(
-        "--include-calculator",
-        action="store_true",
-        help=(
-            "Also build the single-worker household calculator (slow: one "
-            "PolicyEngine household call per grid point per profile). The "
-            "dashboard shows the Household view only when this data exists."
-        ),
-    )
-    parser.add_argument(
-        "--calculator-rent",
-        type=float,
-        default=CALCULATOR_ANNUAL_RENT.value,
-        help=CALCULATOR_ANNUAL_RENT.description,
-    )
-    parser.add_argument("--grid-min", type=float, default=4_000)
-    parser.add_argument("--grid-max", type=float, default=60_000)
-    parser.add_argument("--grid-count", type=int, default=29)
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.populace and args.dataset:
+        raise SystemExit("--populace and --dataset are mutually exclusive.")
     run(args)
     return 0
 

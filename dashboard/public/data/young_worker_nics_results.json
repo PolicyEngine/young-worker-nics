@@ -2,7 +2,11 @@
   "year": 2027,
   "fiscal_year_label": "2027-28",
   "package_versions": {
-    "policyengine": "4.11.0"
+    "policyengine": "4.17.10",
+    "policyengine_uk": "2.89.2",
+    "dataset": "populace_uk_2023",
+    "dataset_source": "populace-uk",
+    "simulation_stack": "policyengine.py (managed_microsimulation)"
   },
   "settings": {
     "pass_through_scenarios": [
@@ -17,13 +21,13 @@
       "high": -0.5
     },
     "lfs_paths": [
-      "/Users/janansadeqian/Downloads/UKDA-9133-tab/tab/lgwt22_5q_aj22_aj23_eul.tab",
-      "/Users/janansadeqian/Downloads/UKDA-9482-tab/tab/lgwt24_5q_js22_js23_eul.tab",
-      "/Users/janansadeqian/Downloads/UKDA-9483-tab/tab/lgwt24_5q_od22_od23_eul.tab",
-      "/Users/janansadeqian/Downloads/UKDA-9484-tab/tab/lgwt24_5q_aj23_aj24_eul.tab",
-      "/Users/janansadeqian/Downloads/UKDA-9485-tab/tab/lgwt24_5q_jm23_jm24_eul.tab",
-      "/Users/janansadeqian/Downloads/UKDA-9486-tab/tab/lgwt24_5q_js23_js24_eul.tab",
-      "/Users/janansadeqian/Downloads/UKDA-9487-tab/tab/lgwt24_5q_od23_od24_eul.tab"
+      "data/lfs/lgwt22_5q_aj22_aj23_eul.tab",
+      "data/lfs/lgwt24_5q_aj23_aj24_eul.tab",
+      "data/lfs/lgwt24_5q_jm23_jm24_eul.tab",
+      "data/lfs/lgwt24_5q_js22_js23_eul.tab",
+      "data/lfs/lgwt24_5q_js23_js24_eul.tab",
+      "data/lfs/lgwt24_5q_od22_od23_eul.tab",
+      "data/lfs/lgwt24_5q_od23_od24_eul.tab"
     ]
   },
   "methods": {
@@ -33,6 +37,7 @@
     "distributional": "Households ranked by baseline equivalised HBAI net income into population deciles, quintiles or quartiles (PolicyEngine's published convention); the chart shows the average net-income change across all households in each group, gainers and non-gainers alike.",
     "employment": "External labour demand elasticities applied to the simulated percentage fall in total employment cost (gross pay plus employer NICs) for employed 21-24-year-olds; new jobs equal elasticity times average cost wedge times the employee count. A partial-equilibrium scenario range, not a forecast.",
     "reform_object": "Build-time cross-check: the static cost is recomputed via a PolicyEngine Reform object that zero-rates the relieved band for 18-24s; the build fails if it diverges from the threshold arithmetic by more than 0.1%.",
+    "public_sector_exclusion": "Employer NICs paid by a public-sector employer (NHS, state schools, councils, civil service, armed forces) flow from one part of government to another, so exempting them nets out of the consolidated public finances rather than costing the Exchequer. The \"exclude public-sector employers\" view therefore restricts the cost, pass-through and jobs figures to non-public employees, identified by PolicyEngine UK's employment_sector variable (from the FRS main-job sector). The default view keeps public-sector employers in, matching conventional HMRC/OBR departmental scoring; the toggle shows the consolidated-Exchequer view.",
     "targeted_population": "The targeted variant restricts the relief to employed 21-24-year-olds who were NEET within the past year, estimated from pooled LFS 5-quarter longitudinal panels (consecutive vintages follow disjoint entry cohorts, so pooling never double-counts a person). A panel member counts as a recent NEET entrant if they were NEET at any of waves 1-4 and employed at wave 5. A quantile regression forest imputes each enhanced-FRS employee's probability of being such an entrant from age, gender and earnings, with the mean calibrated to the directly measured entrant share among employed 21-24 panel members. Every reform quantity then counts each employee at that probability rather than selecting a discrete subsample; the calibrated level is corroborated by the ONS X02 labour-market flows series."
   },
   "nics_parameters": {
@@ -84,11 +89,6 @@
         "description": "Upper sensitivity, within the low-skilled range of the Lichter, Peichl & Siegloch (2015) meta-analysis (median -0.25).",
         "url": "https://doi.org/10.1016/j.euroecorev.2015.08.007"
       }
-    },
-    "calculator_annual_rent": {
-      "value": 9600,
-      "description": "Illustrative private rent for the renter calculator profile (\u00a3800/month, around the level of a modest one-bed/room outside London).",
-      "url": "https://www.ons.gov.uk/economy/inflationandpriceindices/bulletins/privaterentandhousepricesuk/latest"
     }
   },
   "statutory_unmodelled": {
@@ -185,6 +185,14 @@
       "description": "OBR supplementary forecast release (May 2025): HMRC's static costing of the April 2025 employer NICs package (15% rate, \u00a35,000 Secondary Threshold, Employment Allowance changes), certified by the OBR (Table 1.5). The October 2024 EFO judged the rise would reduce labour supply by around 50,000 average-hours equivalents; the OBR publishes no youth-specific labour demand elasticity.",
       "source": "https://obr.uk/supplementary-forecast-information-on-static-costing-of-changes-to-employer-national-insurance-contributions/"
     },
+    "public_sector_employment": {
+      "total_uk": 5940000,
+      "share_of_total_employment": 0.176,
+      "period_label": "2024",
+      "release_label": "ONS Public Sector Employment, UK",
+      "description": "ONS Public Sector Employment (PSE), UK headcount: people employed by central government, local government and public corporations (NHS, state schools, councils, civil service, armed forces). The public sector is about 17-18% of total UK employment. The model identifies public-sector employees from the FRS main-job sector (employment_sector); young (18-24) workers skew private, so their public share sits well below the all-ages figure.",
+      "source": "https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/publicsectorpersonnel/bulletins/publicsectoremployment/latest"
+    },
     "elasticity_evidence": {
       "egebark_kaunitz_2018": -0.31,
       "egebark_kaunitz_url": "https://doi.org/10.1016/j.labeco.2018.10.001",
@@ -197,38 +205,38 @@
   },
   "age_band_note": "Enhanced-FRS calibration constrains 10-year age bands, not single years of age, so single-age figures are indicative and can shift between adjacent ages. The 18-20 / 21-24 split follows the under-21 zero-rate boundary and crosses the calibrated age-20 band edge.",
   "baseline": {
-    "n_employees_18_24": 3211464.4589683604,
-    "n_employees_21_24": 2362369.3241276545,
-    "employer_nics_18_24_bn": 11.061907972944859,
-    "static_cost_18_20_bn": 2.07652209087268,
+    "n_employees_18_24": 2436372.54485894,
+    "n_employees_21_24": 1934191.8657846749,
+    "employer_nics_18_24_bn": 8.717439255300048,
+    "static_cost_18_20_bn": 1.0438377535701377,
     "by_age_band": [
       {
         "group": "18-20",
-        "n_employees": 849095.134840706,
-        "static_cost_bn": 2.07652209087268
+        "n_employees": 502180.67907426506,
+        "static_cost_bn": 1.0438377535701377
       },
       {
         "group": "21-24",
-        "n_employees": 2362369.3241276545,
-        "static_cost_bn": 7.6841685458166085
+        "n_employees": 1934191.8657846749,
+        "static_cost_bn": 6.667011347347882
       }
     ],
     "reconciliation": {
       "model_16_24": {
-        "population": 6471728.060895412,
-        "in_education": 2980653.590603423,
-        "in_education_not_working": 2413694.1679831576,
-        "in_employment": 3285268.803135038,
-        "neet_proxy": 772765.0897772168,
-        "neet_proxy_rate": 0.11940629805608657
+        "population": 5964180.499476083,
+        "in_education": 2775566.5984871984,
+        "in_education_not_working": 2428834.436080754,
+        "in_employment": 2494567.235530503,
+        "neet_proxy": 1040778.8278648257,
+        "neet_proxy_rate": 0.1745049178099576
       },
       "model_18_24": {
-        "population": 4451231.608427483,
-        "in_education": 1111832.7912601943,
-        "in_education_not_working": 566869.0990455281,
-        "in_employment": 3211464.4589683604,
-        "neet_proxy": 672898.0504135941,
-        "neet_proxy_rate": 0.15117120599602174
+        "population": 4458330.393449254,
+        "in_education": 1422504.6186289191,
+        "in_education_not_working": 1079516.5728864074,
+        "in_employment": 2436372.54485894,
+        "neet_proxy": 942441.275703907,
+        "neet_proxy_rate": 0.21138883674674752
       },
       "official_16_24": {
         "neet_level": 1012000,
@@ -237,273 +245,534 @@
         "period_label": "Jan-Mar 2026",
         "source": "https://www.ons.gov.uk/employmentandlabourmarket/peoplenotinwork/unemployment/bulletins/youngpeoplenotineducationemploymentortrainingneet/may2026"
       }
+    },
+    "public_private_employment": {
+      "n_public_all_employees": 5526288.28455776,
+      "n_private_all_employees": 21659772.07914563,
+      "n_public_18_24": 221991.8286555633,
+      "n_private_18_24": 2214380.7162033767,
+      "n_public_21_24": 191621.9566114992,
+      "n_private_21_24": 1742569.9091731757,
+      "public_share_18_24": 0.09111571591298492
     }
   },
   "reform": {
     "population_label": "All employees aged 21-24",
     "static": {
-      "marginal_cost_bn": 7.6841685458166085,
-      "headline_quantum_bn": 9.760690636689286,
-      "n_marginal_employees": 2362369.3241276545,
-      "avg_saving_per_employee": 3252.738031829176,
+      "marginal_cost_bn": 6.667011347347882,
+      "headline_quantum_bn": 7.7108491009180185,
+      "n_marginal_employees": 1934191.8657846749,
+      "avg_saving_per_employee": 3446.9234750106693,
       "by_age_band": [
         {
           "group": "18-20",
-          "n_employees": 849095.134840706,
-          "static_cost_bn": 2.07652209087268
+          "n_employees": 502180.67907426506,
+          "static_cost_bn": 1.0438377535701377
         },
         {
           "group": "21-24",
-          "n_employees": 2362369.3241276545,
-          "static_cost_bn": 7.6841685458166085
+          "n_employees": 1934191.8657846749,
+          "static_cost_bn": 6.667011347347882
         }
       ],
       "by_age": [
         {
           "group": "18",
-          "n_employees": 193138.72225278872,
-          "static_cost_bn": 0.34947574889280414
+          "n_employees": 101280.72893023491,
+          "static_cost_bn": 0.11067767043381983
         },
         {
           "group": "19",
-          "n_employees": 525069.5378082807,
-          "static_cost_bn": 1.4344784956976855
+          "n_employees": 135415.659349598,
+          "static_cost_bn": 0.25250555988692874
         },
         {
           "group": "20",
-          "n_employees": 130886.87477963662,
-          "static_cost_bn": 0.2925678462821897
+          "n_employees": 265484.29079443216,
+          "static_cost_bn": 0.6806545232493895
         },
         {
           "group": "21",
-          "n_employees": 208068.06811562483,
-          "static_cost_bn": 0.6177473327544409
+          "n_employees": 290230.6874077022,
+          "static_cost_bn": 0.9834407003749962
         },
         {
           "group": "22",
-          "n_employees": 537612.8522269998,
-          "static_cost_bn": 1.4440228350689481
+          "n_employees": 422683.913846761,
+          "static_cost_bn": 1.3465739729770625
         },
         {
           "group": "23",
-          "n_employees": 748165.7448617048,
-          "static_cost_bn": 2.8005369316593343
+          "n_employees": 602911.7348283529,
+          "static_cost_bn": 2.1684797603502095
         },
         {
           "group": "24",
-          "n_employees": 868522.6589233251,
-          "static_cost_bn": 2.821861446333885
+          "n_employees": 618365.5297018588,
+          "static_cost_bn": 2.168516913645613
         }
       ],
       "by_gender": [
         {
           "group": "Female",
-          "n_employees": 1792149.056211427,
-          "static_cost_bn": 4.975599815667753
+          "n_employees": 1103985.974921845,
+          "static_cost_bn": 3.3928737111924345
         },
         {
           "group": "Male",
-          "n_employees": 1419315.4027569336,
-          "static_cost_bn": 4.7850908210215355
+          "n_employees": 1332386.569937095,
+          "static_cost_bn": 4.317975389725584
         }
       ],
       "by_country": [
         {
           "group": "England",
-          "n_employees": 2543977.7220271244,
-          "static_cost_bn": 7.855253342858484
-        },
-        {
-          "group": "Scotland",
-          "n_employees": 446029.37300808914,
-          "static_cost_bn": 1.2339989780050329
+          "n_employees": 2029162.2640007734,
+          "static_cost_bn": 6.485661080675367
         },
         {
           "group": "Wales",
-          "n_employees": 141619.27448709914,
-          "static_cost_bn": 0.4320609907995518
+          "n_employees": 182572.52373337746,
+          "static_cost_bn": 0.5868559575682719
+        },
+        {
+          "group": "Scotland",
+          "n_employees": 145372.52245277166,
+          "static_cost_bn": 0.44218565427426026
         },
         {
           "group": "Northern Ireland",
-          "n_employees": 79838.0894460479,
-          "static_cost_bn": 0.23937732502621903
+          "n_employees": 79265.2346720174,
+          "static_cost_bn": 0.19614640840011918
         }
       ],
       "by_region": [
         {
           "group": "South East",
-          "n_employees": 472067.8504849225,
-          "static_cost_bn": 1.7556672528016486
+          "n_employees": 302031.3286328316,
+          "static_cost_bn": 1.0850640054334955
         },
         {
           "group": "London",
-          "n_employees": 470175.51213749126,
-          "static_cost_bn": 1.5148768889108377
-        },
-        {
-          "group": "North West",
-          "n_employees": 484197.8020775011,
-          "static_cost_bn": 1.451811400733109
-        },
-        {
-          "group": "Scotland",
-          "n_employees": 446029.37300808914,
-          "static_cost_bn": 1.2339989780050329
-        },
-        {
-          "group": "East Midlands",
-          "n_employees": 303564.2926026061,
-          "static_cost_bn": 0.8042422150549818
-        },
-        {
-          "group": "South West",
-          "n_employees": 308990.5256344229,
-          "static_cost_bn": 0.7654254546545424
+          "n_employees": 303504.44649100304,
+          "static_cost_bn": 1.0793903058452659
         },
         {
           "group": "Yorkshire",
-          "n_employees": 211906.538554369,
-          "static_cost_bn": 0.6663350777718136
-        },
-        {
-          "group": "Wales",
-          "n_employees": 141619.27448709914,
-          "static_cost_bn": 0.4320609907995518
-        },
-        {
-          "group": "North East",
-          "n_employees": 105626.85524848849,
-          "static_cost_bn": 0.3974507531807019
+          "n_employees": 254502.796972394,
+          "static_cost_bn": 0.9463233011137621
         },
         {
           "group": "East of England",
-          "n_employees": 113098.03562314063,
-          "static_cost_bn": 0.3623690299304819
+          "n_employees": 224882.49987363815,
+          "static_cost_bn": 0.8253304786693595
         },
         {
-          "group": "Northern Ireland",
-          "n_employees": 79838.0894460479,
-          "static_cost_bn": 0.23937732502621903
+          "group": "South West",
+          "n_employees": 214900.39536476135,
+          "static_cost_bn": 0.6624233549635327
         },
         {
           "group": "West Midlands",
-          "n_employees": 74350.30966418236,
-          "static_cost_bn": 0.137075269820368
+          "n_employees": 223403.4038555622,
+          "static_cost_bn": 0.6026115864917269
+        },
+        {
+          "group": "Wales",
+          "n_employees": 182572.52373337746,
+          "static_cost_bn": 0.5868559575682719
+        },
+        {
+          "group": "East Midlands",
+          "n_employees": 197347.45551466942,
+          "static_cost_bn": 0.5751636976956847
+        },
+        {
+          "group": "North West",
+          "n_employees": 234026.88232421875,
+          "static_cost_bn": 0.4835968780541128
+        },
+        {
+          "group": "Scotland",
+          "n_employees": 145372.52245277166,
+          "static_cost_bn": 0.44218565427426026
+        },
+        {
+          "group": "North East",
+          "n_employees": 74563.05497169495,
+          "static_cost_bn": 0.22575747240842806
+        },
+        {
+          "group": "Northern Ireland",
+          "n_employees": 79265.2346720174,
+          "static_cost_bn": 0.19614640840011918
         }
       ],
       "by_income_decile": [
         {
           "group": "1",
-          "n_employees": 111789.44486421975,
-          "static_cost_bn": 0.10538650871826809
+          "n_employees": 85716.65908455849,
+          "static_cost_bn": 0.10607633683104012
         },
         {
           "group": "2",
-          "n_employees": 59185.65397473576,
-          "static_cost_bn": 0.10162876426393191
+          "n_employees": 104175.79051285982,
+          "static_cost_bn": 0.15393094975444102
         },
         {
           "group": "3",
-          "n_employees": 329587.79501359677,
-          "static_cost_bn": 0.420051050349224
+          "n_employees": 246652.1146400571,
+          "static_cost_bn": 0.506135109093127
         },
         {
           "group": "4",
-          "n_employees": 455015.6447945642,
-          "static_cost_bn": 1.2892905220079023
+          "n_employees": 200055.20260035992,
+          "static_cost_bn": 0.5561839541935811
         },
         {
           "group": "5",
-          "n_employees": 233430.58607182885,
-          "static_cost_bn": 0.7329028156015207
+          "n_employees": 193339.96717774868,
+          "static_cost_bn": 0.5659136727367459
         },
         {
           "group": "6",
-          "n_employees": 498294.8187941916,
-          "static_cost_bn": 1.5298588739129548
+          "n_employees": 289588.2906508222,
+          "static_cost_bn": 0.8365945130728131
         },
         {
           "group": "7",
-          "n_employees": 416763.00277532823,
-          "static_cost_bn": 1.536235411849341
+          "n_employees": 376241.2461413741,
+          "static_cost_bn": 1.4171057727085927
         },
         {
           "group": "8",
-          "n_employees": 456736.9739060062,
-          "static_cost_bn": 1.7085918024078592
+          "n_employees": 439043.3880493641,
+          "static_cost_bn": 1.4834477245538764
         },
         {
           "group": "9",
-          "n_employees": 262809.93201400223,
-          "static_cost_bn": 0.8791724905302264
+          "n_employees": 336788.02638575435,
+          "static_cost_bn": 1.2802908146309262
         },
         {
           "group": "10",
-          "n_employees": 387811.928878105,
-          "static_cost_bn": 1.4575723970480596
+          "n_employees": 164771.85961604118,
+          "static_cost_bn": 0.8051702533428757
         }
       ],
       "by_income_quintile": [
         {
           "group": "1",
-          "n_employees": 170975.0988389555,
-          "static_cost_bn": 0.2070152729822
+          "n_employees": 189892.4495974183,
+          "static_cost_bn": 0.2600072865854811
         },
         {
           "group": "2",
-          "n_employees": 784603.439808161,
-          "static_cost_bn": 1.7093415723571266
+          "n_employees": 446707.317240417,
+          "static_cost_bn": 1.0623190632867079
         },
         {
           "group": "3",
-          "n_employees": 731725.4048660204,
-          "static_cost_bn": 2.2627616895144747
+          "n_employees": 482928.2578285709,
+          "static_cost_bn": 1.402508185809559
         },
         {
           "group": "4",
-          "n_employees": 873499.9766813344,
-          "static_cost_bn": 3.2448272142572003
+          "n_employees": 815284.6341907382,
+          "static_cost_bn": 2.9005534972624694
         },
         {
           "group": "5",
-          "n_employees": 650621.8608921072,
-          "static_cost_bn": 2.3367448875782864
+          "n_employees": 501559.88600179553,
+          "static_cost_bn": 2.0854610679738017
         }
       ],
       "by_income_quartile": [
         {
           "group": "1",
-          "n_employees": 362944.93248129205,
-          "static_cost_bn": 0.5456471202391536
+          "n_employees": 284852.81775456667,
+          "static_cost_bn": 0.4800167444474998
         },
         {
           "group": "2",
-          "n_employees": 826102.8701194352,
-          "static_cost_bn": 2.1036125407016932
+          "n_employees": 545086.9162610173,
+          "static_cost_bn": 1.4082232781614352
         },
         {
           "group": "3",
-          "n_employees": 1113051.0843715093,
-          "static_cost_bn": 3.7998052763763743
+          "n_employees": 987735.8396447375,
+          "static_cost_bn": 3.307482113528638
         },
         {
           "group": "4",
-          "n_employees": 909365.571996124,
-          "static_cost_bn": 3.3116256993720676
+          "n_employees": 618696.9711986184,
+          "static_cost_bn": 2.515126964780446
+        }
+      ]
+    },
+    "static_excl_public": {
+      "marginal_cost_bn": 5.961918330800139,
+      "headline_quantum_bn": 6.9311606312995675,
+      "n_marginal_employees": 1742569.9091731757,
+      "avg_saving_per_employee": 3421.33667029117,
+      "by_age_band": [
+        {
+          "group": "18-20",
+          "n_employees": 471810.80703020096,
+          "static_cost_bn": 0.9692423004994282
+        },
+        {
+          "group": "21-24",
+          "n_employees": 1742569.9091731757,
+          "static_cost_bn": 5.961918330800139
+        }
+      ],
+      "by_age": [
+        {
+          "group": "18",
+          "n_employees": 91940.98509430885,
+          "static_cost_bn": 0.09417351252815559
+        },
+        {
+          "group": "19",
+          "n_employees": 131052.78874903917,
+          "static_cost_bn": 0.2394322952777754
+        },
+        {
+          "group": "20",
+          "n_employees": 248817.03318685293,
+          "static_cost_bn": 0.6356364926934972
+        },
+        {
+          "group": "21",
+          "n_employees": 267126.4651738852,
+          "static_cost_bn": 0.8964661945696318
+        },
+        {
+          "group": "22",
+          "n_employees": 390333.57986584306,
+          "static_cost_bn": 1.229972619471382
+        },
+        {
+          "group": "23",
+          "n_employees": 556692.4840703607,
+          "static_cost_bn": 2.00342557266299
+        },
+        {
+          "group": "24",
+          "n_employees": 528417.3800630867,
+          "static_cost_bn": 1.8320539440961352
+        }
+      ],
+      "by_gender": [
+        {
+          "group": "Female",
+          "n_employees": 950242.9234901071,
+          "static_cost_bn": 2.8571937407942016
+        },
+        {
+          "group": "Male",
+          "n_employees": 1264137.7927132696,
+          "static_cost_bn": 4.073966890505365
+        }
+      ],
+      "by_country": [
+        {
+          "group": "England",
+          "n_employees": 1875848.6244124174,
+          "static_cost_bn": 5.944545167832307
+        },
+        {
+          "group": "Wales",
+          "n_employees": 135933.92083853483,
+          "static_cost_bn": 0.4267503985062978
+        },
+        {
+          "group": "Scotland",
+          "n_employees": 133917.85717338324,
+          "static_cost_bn": 0.39734546711917085
+        },
+        {
+          "group": "Northern Ireland",
+          "n_employees": 68680.31377904117,
+          "static_cost_bn": 0.16251959784179212
+        }
+      ],
+      "by_region": [
+        {
+          "group": "London",
+          "n_employees": 296465.36050081253,
+          "static_cost_bn": 1.0539129304045856
+        },
+        {
+          "group": "South East",
+          "n_employees": 275711.6962325573,
+          "static_cost_bn": 0.9808588132900312
+        },
+        {
+          "group": "Yorkshire",
+          "n_employees": 243566.4529401064,
+          "static_cost_bn": 0.8950478726946196
+        },
+        {
+          "group": "East of England",
+          "n_employees": 206021.63128376007,
+          "static_cost_bn": 0.7610234118267231
+        },
+        {
+          "group": "South West",
+          "n_employees": 201017.67399787903,
+          "static_cost_bn": 0.6204178012827005
+        },
+        {
+          "group": "East Midlands",
+          "n_employees": 189974.03809189796,
+          "static_cost_bn": 0.5519379420811523
+        },
+        {
+          "group": "West Midlands",
+          "n_employees": 198804.67312932014,
+          "static_cost_bn": 0.5088864889607232
+        },
+        {
+          "group": "Wales",
+          "n_employees": 135933.92083853483,
+          "static_cost_bn": 0.4267503985062978
+        },
+        {
+          "group": "Scotland",
+          "n_employees": 133917.85717338324,
+          "static_cost_bn": 0.39734546711917085
+        },
+        {
+          "group": "North West",
+          "n_employees": 203776.1117553711,
+          "static_cost_bn": 0.394276152887531
+        },
+        {
+          "group": "North East",
+          "n_employees": 60510.98648071289,
+          "static_cost_bn": 0.17818375440423978
+        },
+        {
+          "group": "Northern Ireland",
+          "n_employees": 68680.31377904117,
+          "static_cost_bn": 0.16251959784179212
+        }
+      ],
+      "by_income_decile": [
+        {
+          "group": "1",
+          "n_employees": 84188.42799782753,
+          "static_cost_bn": 0.1043894443899332
+        },
+        {
+          "group": "2",
+          "n_employees": 100709.90901559591,
+          "static_cost_bn": 0.15354040627947912
+        },
+        {
+          "group": "3",
+          "n_employees": 232703.8066509366,
+          "static_cost_bn": 0.47746503248278654
+        },
+        {
+          "group": "4",
+          "n_employees": 184458.4370713234,
+          "static_cost_bn": 0.5060221871577844
+        },
+        {
+          "group": "5",
+          "n_employees": 170397.87910068035,
+          "static_cost_bn": 0.49985413726937655
+        },
+        {
+          "group": "6",
+          "n_employees": 259571.787437737,
+          "static_cost_bn": 0.7300403345577633
+        },
+        {
+          "group": "7",
+          "n_employees": 342077.531901896,
+          "static_cost_bn": 1.2845647525231014
+        },
+        {
+          "group": "8",
+          "n_employees": 375694.09442567825,
+          "static_cost_bn": 1.242169700119402
+        },
+        {
+          "group": "9",
+          "n_employees": 300882.05280534923,
+          "static_cost_bn": 1.132575700482312
+        },
+        {
+          "group": "10",
+          "n_employees": 163696.7897963524,
+          "static_cost_bn": 0.8005389360376286
+        }
+      ],
+      "by_income_quintile": [
+        {
+          "group": "1",
+          "n_employees": 184898.33701342344,
+          "static_cost_bn": 0.2579298506694123
+        },
+        {
+          "group": "2",
+          "n_employees": 417162.24372226,
+          "static_cost_bn": 0.9834872196405708
+        },
+        {
+          "group": "3",
+          "n_employees": 429969.66653841734,
+          "static_cost_bn": 1.22989447182714
+        },
+        {
+          "group": "4",
+          "n_employees": 717771.6263275743,
+          "static_cost_bn": 2.5267344526425037
+        },
+        {
+          "group": "5",
+          "n_employees": 464578.8426017016,
+          "static_cost_bn": 1.9331146365199408
+        }
+      ],
+      "by_income_quartile": [
+        {
+          "group": "1",
+          "n_employees": 275141.7635254264,
+          "static_cost_bn": 0.466307364926031
+        },
+        {
+          "group": "2",
+          "n_employees": 497316.6963109374,
+          "static_cost_bn": 1.274963842653329
+        },
+        {
+          "group": "3",
+          "n_employees": 872839.948325187,
+          "static_cost_bn": 2.8835417029486763
+        },
+        {
+          "group": "4",
+          "n_employees": 569082.3080418259,
+          "static_cost_bn": 2.306347720771532
         }
       ]
     },
     "pass_through": [
       {
         "pass_through_rate": 0.0,
-        "gross_cost_bn": 7.6841685458166085,
+        "gross_cost_bn": 6.667011347347882,
         "fiscal_offset_bn": 0.0,
         "offset_components_bn": {
           "income_tax": 0.0,
           "employee_nics": 0.0,
           "benefits_saved": 0.0
         },
-        "net_cost_bn": 7.6841685458166085,
+        "net_cost_bn": 6.667011347347882,
         "avg_wage_gain": 0.0,
         "poverty": null,
         "inequality": null,
@@ -511,444 +780,905 @@
       },
       {
         "pass_through_rate": 0.25,
-        "gross_cost_bn": 7.6841685458166085,
-        "fiscal_offset_bn": 0.5534849298195267,
+        "gross_cost_bn": 6.667011347347882,
+        "fiscal_offset_bn": 0.503207886414711,
         "offset_components_bn": {
-          "income_tax": 0.3924939331011963,
-          "employee_nics": 0.14936264997150422,
-          "benefits_saved": 0.011628346746826172
+          "income_tax": 0.3840463483598633,
+          "employee_nics": 0.11298010171585846,
+          "benefits_saved": 0.006181436338989258
         },
-        "net_cost_bn": 7.130683615997082,
-        "avg_wage_gain": 813.184507957294,
+        "net_cost_bn": 6.16380346093317,
+        "avg_wage_gain": 861.7308687526673,
         "poverty": {
-          "baseline_rate_bhc": 0.09850257251754754,
-          "reformed_rate_bhc": 0.09846911552162074,
-          "baseline_rate_bhc_18_24": 0.10102398818208916,
-          "reformed_rate_bhc_18_24": 0.10063353853831936,
-          "people_lifted": 2394.4128519892693,
-          "people_lifted_18_24": 1737.981795847416,
-          "baseline_deep_rate_bhc": 0.014956119079829633,
-          "reformed_deep_rate_bhc": 0.014956119079829633
+          "baseline_rate_bhc": 0.14856379806654677,
+          "reformed_rate_bhc": 0.14816961051718544,
+          "baseline_rate_bhc_18_24": 0.16129733804205773,
+          "reformed_rate_bhc_18_24": 0.1555892327584104,
+          "people_lifted": 27670.13419151306,
+          "people_lifted_18_24": 25448.61927509308,
+          "baseline_deep_rate_bhc": 0.03711428552232418,
+          "reformed_deep_rate_bhc": 0.03711428552232418
         },
         "inequality": {
-          "baseline_gini": 0.2977624272238969,
-          "reformed_gini": 0.2977154753152516
+          "baseline_gini": 0.35146487644834634,
+          "reformed_gini": 0.3514306682737782
         },
         "avg_change_by_group": {
           "deciles": [
             {
               "group": 1,
-              "avg_change_per_household": 2.6555965506213624,
-              "total_change_bn": 0.009957781372316624,
-              "n_households": 3749734.262151636
+              "avg_change_per_household": 5.050401410424469,
+              "total_change_bn": 0.01532690427295965,
+              "n_households": 3034789.3221563697
             },
             {
               "group": 2,
-              "avg_change_per_household": 3.80145994782395,
-              "total_change_bn": 0.011402202784170035,
-              "n_households": 2999427.309683202
+              "avg_change_per_household": 7.637531339053483,
+              "total_change_bn": 0.02439392041431982,
+              "n_households": 3193953.5605680346
             },
             {
               "group": 3,
-              "avg_change_per_household": 18.607169018220322,
-              "total_change_bn": 0.06010647012275357,
-              "n_households": 3230285.599270729
+              "avg_change_per_household": 26.05861997150311,
+              "total_change_bn": 0.07506973702312648,
+              "n_households": 2880802.479379967
             },
             {
               "group": 4,
-              "avg_change_per_household": 52.9159822908425,
-              "total_change_bn": 0.18461792492998305,
-              "n_households": 3488887.7979296725
+              "avg_change_per_household": 33.28459571020056,
+              "total_change_bn": 0.08665498963623365,
+              "n_households": 2603456.2772134542
             },
             {
               "group": 5,
-              "avg_change_per_household": 35.194861385827956,
-              "total_change_bn": 0.11892417489103992,
-              "n_households": 3379020.976594258
+              "avg_change_per_household": 27.089845570696724,
+              "total_change_bn": 0.07987578034789214,
+              "n_households": 2948550.5976562053
             },
             {
               "group": 6,
-              "avg_change_per_household": 77.833375923196,
-              "total_change_bn": 0.23644721850135542,
-              "n_households": 3037864.1000317847
+              "avg_change_per_household": 44.92315215523442,
+              "total_change_bn": 0.13476070701279397,
+              "n_households": 2999805.235107299
             },
             {
               "group": 7,
-              "avg_change_per_household": 83.70030009184559,
-              "total_change_bn": 0.2656116320319578,
-              "n_households": 3173365.349234091
+              "avg_change_per_household": 77.14306656517903,
+              "total_change_bn": 0.2184551033171314,
+              "n_households": 2831817.7257389203
             },
             {
               "group": 8,
-              "avg_change_per_household": 93.6083801540298,
-              "total_change_bn": 0.27861125455188646,
-              "n_households": 2976349.4902212806
+              "avg_change_per_household": 78.03868693379475,
+              "total_change_bn": 0.2148850117875387,
+              "n_households": 2753570.3153211623
             },
             {
               "group": 9,
-              "avg_change_per_household": 28.33094107218502,
-              "total_change_bn": 0.08852857775379298,
-              "n_households": 3124801.8739733743
+              "avg_change_per_household": 61.679907301422574,
+              "total_change_bn": 0.18987252090093076,
+              "n_households": 3078352.890075624
             },
             {
               "group": 10,
-              "avg_change_per_household": 37.29663305452821,
-              "total_change_bn": 0.11317067816613276,
-              "n_households": 3034340.338460998
+              "avg_change_per_household": 38.083054289468315,
+              "total_change_bn": 0.12394228966494437,
+              "n_households": 3254525.9821563214
             }
           ],
           "quintiles": [
             {
               "group": 1,
-              "avg_change_per_household": 3.16483520643879,
-              "total_change_bn": 0.02135998415648666,
-              "n_households": 6749161.571834838
+              "avg_change_per_household": 6.377021083571504,
+              "total_change_bn": 0.03972082468727948,
+              "n_households": 6228742.882724404
             },
             {
               "group": 2,
-              "avg_change_per_household": 36.421800805840654,
-              "total_change_bn": 0.24472439505273663,
-              "n_households": 6719173.397200401
+              "avg_change_per_household": 29.488894276720156,
+              "total_change_bn": 0.16172472665936014,
+              "n_households": 5484258.756593421
             },
             {
               "group": 3,
-              "avg_change_per_household": 55.38066977182757,
-              "total_change_bn": 0.3553713933923953,
-              "n_households": 6416885.076626043
+              "avg_change_per_household": 36.083330149563295,
+              "total_change_bn": 0.21463648736068602,
+              "n_households": 5948355.832763504
             },
             {
               "group": 4,
-              "avg_change_per_household": 88.4956296009396,
-              "total_change_bn": 0.5442228865838443,
-              "n_households": 6149714.839455372
+              "avg_change_per_household": 77.58460323956722,
+              "total_change_bn": 0.43334011510467,
+              "n_households": 5585388.041060083
             },
             {
               "group": 5,
-              "avg_change_per_household": 32.74794589297282,
-              "total_change_bn": 0.20169925591992574,
-              "n_households": 6159142.212434373
+              "avg_change_per_household": 49.553262725720664,
+              "total_change_bn": 0.3138148105658752,
+              "n_households": 6332878.872231945
             }
           ],
           "quartiles": [
             {
               "group": 1,
-              "avg_change_per_household": 9.031229834197935,
-              "total_change_bn": 0.07543009173644302,
-              "n_households": 8352139.533734055
+              "avg_change_per_household": 8.796841981152044,
+              "total_change_bn": 0.06703322730845801,
+              "n_households": 7620146.804055616
             },
             {
               "group": 2,
-              "avg_change_per_household": 36.44150394218709,
-              "total_change_bn": 0.3095784623638202,
-              "n_households": 8495216.41189544
+              "avg_change_per_household": 30.432575773052577,
+              "total_change_bn": 0.21428810438607374,
+              "n_households": 7041405.4329184145
             },
             {
               "group": 3,
-              "avg_change_per_household": 79.92190745077845,
-              "total_change_bn": 0.6246592586494534,
-              "n_households": 7815870.248519314
+              "avg_change_per_household": 70.95167106306941,
+              "total_change_bn": 0.508263576945677,
+              "n_households": 7163518.058565218
             },
             {
               "group": 4,
-              "avg_change_per_household": 47.49929416263827,
-              "total_change_bn": 0.35771010235567197,
-              "n_households": 7530850.903402214
+              "avg_change_per_household": 48.184853881863326,
+              "total_change_bn": 0.3736520557376622,
+              "n_households": 7754554.089834109
             }
           ]
         }
       },
       {
         "pass_through_rate": 0.6,
-        "gross_cost_bn": 7.6841685458166085,
-        "fiscal_offset_bn": 1.3308433957476806,
+        "gross_cost_bn": 6.667011347347882,
+        "fiscal_offset_bn": 1.1980223756997985,
         "offset_components_bn": {
-          "income_tax": 0.9447168147124023,
-          "employee_nics": 0.3584269159769287,
-          "benefits_saved": 0.027699665058349608
+          "income_tax": 0.9333764933199463,
+          "employee_nics": 0.2722864956443787,
+          "benefits_saved": -0.007640613264526367
         },
-        "net_cost_bn": 6.353325150068928,
-        "avg_wage_gain": 1951.6428190975055,
+        "net_cost_bn": 5.468988971648082,
+        "avg_wage_gain": 2068.1540850064016,
         "poverty": {
-          "baseline_rate_bhc": 0.09850257251754754,
-          "reformed_rate_bhc": 0.09846861315401743,
-          "baseline_rate_bhc_18_24": 0.10102398818208916,
-          "reformed_rate_bhc_18_24": 0.1006277194669152,
-          "people_lifted": 2430.365734562278,
-          "people_lifted_18_24": 1763.8838304132223,
-          "baseline_deep_rate_bhc": 0.014956119079829633,
-          "reformed_deep_rate_bhc": 0.014955923419378696
+          "baseline_rate_bhc": 0.14856379806654677,
+          "reformed_rate_bhc": 0.14816961051718544,
+          "baseline_rate_bhc_18_24": 0.16129733804205773,
+          "reformed_rate_bhc_18_24": 0.1555892327584104,
+          "people_lifted": 27670.13419151306,
+          "people_lifted_18_24": 25448.61927509308,
+          "baseline_deep_rate_bhc": 0.03711428552232418,
+          "reformed_deep_rate_bhc": 0.03711428552232418
         },
         "inequality": {
-          "baseline_gini": 0.2977624272238969,
-          "reformed_gini": 0.2976830527429927
+          "baseline_gini": 0.35146487644834634,
+          "reformed_gini": 0.35140056384303
         },
         "avg_change_by_group": {
           "deciles": [
             {
               "group": 1,
-              "avg_change_per_household": 6.278007414380298,
-              "total_change_bn": 0.02354085949974381,
-              "n_households": 3749734.262151636
+              "avg_change_per_household": 11.942506111455133,
+              "total_change_bn": 0.03624299002683123,
+              "n_households": 3034789.3221563697
             },
             {
               "group": 2,
-              "avg_change_per_household": 9.04918467304915,
-              "total_change_bn": 0.027142371638710274,
-              "n_households": 2999427.309683202
+              "avg_change_per_household": 18.22176331003623,
+              "total_change_bn": 0.058199465803918195,
+              "n_households": 3193953.5605680346
             },
             {
               "group": 3,
-              "avg_change_per_household": 44.53003326823547,
-              "total_change_bn": 0.14384472520142752,
-              "n_households": 3230285.599270729
+              "avg_change_per_household": 68.71269445239152,
+              "total_change_bn": 0.19794770054332758,
+              "n_households": 2880802.479379967
             },
             {
               "group": 4,
-              "avg_change_per_household": 126.92061096777572,
-              "total_change_bn": 0.4428117709112517,
-              "n_households": 3488887.7979296725
+              "avg_change_per_household": 79.8383245351559,
+              "total_change_bn": 0.20785558717325658,
+              "n_households": 2603456.2772134542
             },
             {
               "group": 5,
-              "avg_change_per_household": 84.4657618948126,
-              "total_change_bn": 0.2854115812465878,
-              "n_households": 3379020.976594258
+              "avg_change_per_household": 65.01325653413878,
+              "total_change_bn": 0.1916948764093111,
+              "n_households": 2948550.5976562053
             },
             {
               "group": 6,
-              "avg_change_per_household": 186.79450956669422,
-              "total_change_bn": 0.5674563346957041,
-              "n_households": 3037864.1000317847
+              "avg_change_per_household": 107.4588022140761,
+              "total_change_bn": 0.3223554774401453,
+              "n_households": 2999805.235107299
             },
             {
               "group": 7,
-              "avg_change_per_household": 200.87105273242597,
-              "total_change_bn": 0.6374372384052545,
-              "n_households": 3173365.349234091
+              "avg_change_per_household": 185.06547850046923,
+              "total_change_bn": 0.5240717024399838,
+              "n_households": 2831817.7257389203
             },
             {
               "group": 8,
-              "avg_change_per_household": 224.4391182169332,
-              "total_change_bn": 0.6680092550906829,
-              "n_households": 2976349.4902212806
+              "avg_change_per_household": 187.14878892144404,
+              "total_change_bn": 0.5153273497223942,
+              "n_households": 2753570.3153211623
             },
             {
               "group": 9,
-              "avg_change_per_household": 67.85897204345122,
-              "total_change_bn": 0.21204584300728319,
-              "n_households": 3124801.8739733743
+              "avg_change_per_household": 147.41784331972153,
+              "total_change_bn": 0.45380414403198027,
+              "n_households": 3078352.890075624
             },
             {
               "group": 10,
-              "avg_change_per_household": 89.48871650597656,
-              "total_change_bn": 0.2715392223311852,
-              "n_households": 3034340.338460998
+              "avg_change_per_household": 90.31677646188538,
+              "total_change_bn": 0.29393829561981044,
+              "n_households": 3254525.9821563214
             }
           ],
           "quintiles": [
             {
               "group": 1,
-              "avg_change_per_household": 7.509559609590923,
-              "total_change_bn": 0.050683231138454084,
-              "n_households": 6749161.571834838
+              "avg_change_per_household": 15.162362230858536,
+              "total_change_bn": 0.09444245583074942,
+              "n_households": 6228742.882724404
             },
             {
               "group": 2,
-              "avg_change_per_household": 87.3108136124474,
-              "total_change_bn": 0.5866564961126792,
-              "n_households": 6719173.397200401
+              "avg_change_per_household": 73.99419059662516,
+              "total_change_bn": 0.40580328771658414,
+              "n_households": 5484258.756593421
             },
             {
               "group": 3,
-              "avg_change_per_household": 132.90995642869208,
-              "total_change_bn": 0.8528679159422918,
-              "n_households": 6416885.076626043
+              "avg_change_per_household": 86.4188976419451,
+              "total_change_bn": 0.5140503538494564,
+              "n_households": 5948355.832763504
             },
             {
               "group": 4,
-              "avg_change_per_household": 212.2775653141585,
-              "total_change_bn": 1.3054464934959373,
-              "n_households": 6149714.839455372
+              "avg_change_per_household": 186.09254084432504,
+              "total_change_bn": 1.0393990521623782,
+              "n_households": 5585388.041060083
             },
             {
               "group": 5,
-              "avg_change_per_household": 78.51500235896219,
-              "total_change_bn": 0.48358506533846846,
-              "n_households": 6159142.212434373
+              "avg_change_per_household": 118.07306830554586,
+              "total_change_bn": 0.7477424396517908,
+              "n_households": 6332878.872231945
             }
           ],
           "quartiles": [
             {
               "group": 1,
-              "avg_change_per_household": 21.55636020892756,
-              "total_change_bn": 0.18004172830439558,
-              "n_households": 8352139.533734055
+              "avg_change_per_household": 23.865487149684547,
+              "total_change_bn": 0.18185851563089908,
+              "n_households": 7620146.804055616
             },
             {
               "group": 2,
-              "avg_change_per_household": 87.42679929299331,
-              "total_change_bn": 0.7427095801933256,
-              "n_households": 8495216.41189544
+              "avg_change_per_household": 72.4403827027376,
+              "total_change_bn": 0.5100821043257456,
+              "n_households": 7041405.4329184145
             },
             {
               "group": 3,
-              "avg_change_per_household": 191.7248273637258,
-              "total_change_bn": 1.4984963740946462,
-              "n_households": 7815870.248519314
+              "avg_change_per_household": 170.09386437651455,
+              "total_change_bn": 1.218470469112305,
+              "n_households": 7163518.058565218
             },
             {
               "group": 4,
-              "avg_change_per_household": 113.9302225526532,
-              "total_change_bn": 0.8579915194354637,
-              "n_households": 7530850.903402214
+              "avg_change_per_household": 114.90364111459448,
+              "total_change_bn": 0.8910265001420092,
+              "n_households": 7754554.089834109
             }
           ]
         }
       },
       {
         "pass_through_rate": 0.76,
-        "gross_cost_bn": 7.6841685458166085,
-        "fiscal_offset_bn": 1.686287019612938,
+        "gross_cost_bn": 6.667011347347882,
+        "fiscal_offset_bn": 1.5278548809984742,
         "offset_components_bn": {
-          "income_tax": 1.1976311533317872,
-          "employee_nics": 0.45360621127248385,
-          "benefits_saved": 0.03504965500866699
+          "income_tax": 1.1855671887817383,
+          "employee_nics": 0.3445895017124634,
+          "benefits_saved": -0.002301809495727539
         },
-        "net_cost_bn": 5.99788152620367,
-        "avg_wage_gain": 2472.080904190174,
+        "net_cost_bn": 5.139156466349407,
+        "avg_wage_gain": 2619.6618410081087,
         "poverty": {
-          "baseline_rate_bhc": 0.09850257251754754,
-          "reformed_rate_bhc": 0.09845736636123788,
-          "baseline_rate_bhc_18_24": 0.10102398818208916,
-          "reformed_rate_bhc_18_24": 0.10053582548110543,
-          "people_lifted": 3235.2636170238256,
-          "people_lifted_18_24": 2172.9252446740866,
-          "baseline_deep_rate_bhc": 0.014956119079829633,
-          "reformed_deep_rate_bhc": 0.014955923419378696
+          "baseline_rate_bhc": 0.14856379806654677,
+          "reformed_rate_bhc": 0.14810220744190045,
+          "baseline_rate_bhc_18_24": 0.16129733804205773,
+          "reformed_rate_bhc_18_24": 0.15505861005348637,
+          "people_lifted": 32401.516857147217,
+          "people_lifted_18_24": 27814.310607910156,
+          "baseline_deep_rate_bhc": 0.03711428552232418,
+          "reformed_deep_rate_bhc": 0.03711428552232418
         },
         "inequality": {
-          "baseline_gini": 0.2977624272238969,
-          "reformed_gini": 0.2976803896405829
+          "baseline_gini": 0.35146487644834634,
+          "reformed_gini": 0.3513939670510902
         },
         "avg_change_by_group": {
           "deciles": [
             {
               "group": 1,
-              "avg_change_per_household": 7.93185789398018,
-              "total_change_bn": 0.029742359307575402,
-              "n_households": 3749734.262151636
+              "avg_change_per_household": 15.081963057927604,
+              "total_change_bn": 0.04577058044535552,
+              "n_households": 3034789.3221563697
             },
             {
               "group": 2,
-              "avg_change_per_household": 11.44409968463732,
-              "total_change_bn": 0.0343257451288381,
-              "n_households": 2999427.309683202
+              "avg_change_per_household": 23.049058070112405,
+              "total_change_bn": 0.07361762109077491,
+              "n_households": 3193953.5605680346
             },
             {
               "group": 3,
-              "avg_change_per_household": 56.36642089533599,
-              "total_change_bn": 0.18207963770063657,
-              "n_households": 3230285.599270729
+              "avg_change_per_household": 84.55405275072916,
+              "total_change_bn": 0.24358352480592507,
+              "n_households": 2880802.479379967
             },
             {
               "group": 4,
-              "avg_change_per_household": 160.71552485988727,
-              "total_change_bn": 0.5607184336215236,
-              "n_households": 3488887.7979296725
+              "avg_change_per_household": 100.50612512568162,
+              "total_change_bn": 0.2616633023568567,
+              "n_households": 2603456.2772134542
             },
             {
               "group": 5,
-              "avg_change_per_household": 106.98806187732721,
-              "total_change_bn": 0.3615149053286531,
-              "n_households": 3379020.976594258
+              "avg_change_per_household": 82.34354030427211,
+              "total_change_bn": 0.24279409497728938,
+              "n_households": 2948550.5976562053
             },
             {
               "group": 6,
-              "avg_change_per_household": 236.59143362557924,
-              "total_change_bn": 0.7187326225862,
-              "n_households": 3037864.1000317847
+              "avg_change_per_household": 135.98102054828507,
+              "total_change_bn": 0.40791657731597875,
+              "n_households": 2999805.235107299
             },
             {
               "group": 7,
-              "avg_change_per_household": 254.44563828430896,
-              "total_change_bn": 0.8074489717951774,
-              "n_households": 3173365.349234091
+              "avg_change_per_household": 234.53649801273872,
+              "total_change_bn": 0.6641646124052045,
+              "n_households": 2831817.7257389203
             },
             {
               "group": 8,
-              "avg_change_per_household": 284.2670725956857,
-              "total_change_bn": 0.8460781566068649,
-              "n_households": 2976349.4902212806
+              "avg_change_per_household": 236.96938918851103,
+              "total_change_bn": 0.6525118757092716,
+              "n_households": 2753570.3153211623
             },
             {
               "group": 9,
-              "avg_change_per_household": 85.92331951091732,
-              "total_change_bn": 0.2684933498257275,
-              "n_households": 3124801.8739733743
+              "avg_change_per_household": 186.54067888654544,
+              "total_change_bn": 0.5742380379670661,
+              "n_households": 3078352.890075624
             },
             {
               "group": 10,
-              "avg_change_per_household": 113.37827407446473,
-              "total_change_bn": 0.3440282705292351,
-              "n_households": 3034340.338460998
+              "avg_change_per_household": 114.26127576551778,
+              "total_change_bn": 0.37186629073320604,
+              "n_households": 3254525.9821563214
             }
           ],
           "quintiles": [
             {
               "group": 1,
-              "avg_change_per_household": 9.49275013711012,
-              "total_change_bn": 0.0640681044364135,
-              "n_households": 6749161.571834838
+              "avg_change_per_household": 19.16730290268635,
+              "total_change_bn": 0.11938820153613043,
+              "n_households": 6228742.882724404
             },
             {
               "group": 2,
-              "avg_change_per_household": 110.54902551430702,
-              "total_change_bn": 0.7427980713221601,
-              "n_households": 6719173.397200401
+              "avg_change_per_household": 92.12673026329244,
+              "total_change_bn": 0.5052468271627817,
+              "n_households": 5484258.756593421
             },
             {
               "group": 3,
-              "avg_change_per_household": 168.34453399356192,
-              "total_change_bn": 1.0802475279148531,
-              "n_households": 6416885.076626043
+              "avg_change_per_household": 109.39336693833246,
+              "total_change_bn": 0.6507106722932682,
+              "n_households": 5948355.832763504
             },
             {
               "group": 4,
-              "avg_change_per_household": 268.8786669901074,
-              "total_change_bn": 1.6535271284020423,
-              "n_households": 6149714.839455372
+              "avg_change_per_household": 235.7359020421035,
+              "total_change_bn": 1.316676488114476,
+              "n_households": 5585388.041060083
             },
             {
               "group": 5,
-              "avg_change_per_household": 99.44917639965747,
-              "total_change_bn": 0.6125216203549626,
-              "n_households": 6159142.212434373
+              "avg_change_per_household": 149.39561418878506,
+              "total_change_bn": 0.946104328700272,
+              "n_households": 6332878.872231945
             }
           ],
           "quartiles": [
             {
               "group": 1,
-              "avg_change_per_household": 27.274647488604625,
-              "total_change_bn": 0.22780166155823495,
-              "n_households": 8352139.533734055
+              "avg_change_per_household": 29.41754215133876,
+              "total_change_bn": 0.22416598980769545,
+              "n_households": 7620146.804055616
             },
             {
               "group": 2,
-              "avg_change_per_household": 110.71871202856516,
-              "total_change_bn": 0.9405794195289919,
-              "n_households": 8495216.41189544
+              "avg_change_per_household": 91.35436668101303,
+              "total_change_bn": 0.6432631338685062,
+              "n_households": 7041405.4329184145
             },
             {
               "group": 3,
-              "avg_change_per_household": 242.8411223226342,
-              "total_change_bn": 1.8980147030785162,
-              "n_households": 7815870.248519314
+              "avg_change_per_household": 215.43135209127968,
+              "total_change_bn": 1.5432463810870036,
+              "n_households": 7163518.058565218
             },
             {
               "group": 4,
-              "avg_change_per_household": 144.30861561390358,
-              "total_change_bn": 1.0867666682646888,
-              "n_households": 7530850.903402214
+              "avg_change_per_household": 145.39211410257147,
+              "total_change_bn": 1.1274510130437232,
+              "n_households": 7754554.089834109
+            }
+          ]
+        }
+      }
+    ],
+    "pass_through_excl_public": [
+      {
+        "pass_through_rate": 0.0,
+        "gross_cost_bn": 5.961918330800139,
+        "fiscal_offset_bn": 0.0,
+        "offset_components_bn": {
+          "income_tax": 0.0,
+          "employee_nics": 0.0,
+          "benefits_saved": 0.0
+        },
+        "net_cost_bn": 5.961918330800139,
+        "avg_wage_gain": 0.0,
+        "poverty": null,
+        "inequality": null,
+        "avg_change_by_group": null
+      },
+      {
+        "pass_through_rate": 0.25,
+        "gross_cost_bn": 5.961918330800139,
+        "fiscal_offset_bn": 0.45226358053945925,
+        "offset_components_bn": {
+          "income_tax": 0.34705737171704104,
+          "employee_nics": 0.09974147233395386,
+          "benefits_saved": 0.005464736488464355
+        },
+        "net_cost_bn": 5.5096547502606805,
+        "avg_wage_gain": 855.3341675727925,
+        "poverty": {
+          "baseline_rate_bhc": 0.14856379806654677,
+          "reformed_rate_bhc": 0.14816961051718544,
+          "baseline_rate_bhc_18_24": 0.16129733804205773,
+          "reformed_rate_bhc_18_24": 0.1555892327584104,
+          "people_lifted": 27670.13419151306,
+          "people_lifted_18_24": 25448.61927509308,
+          "baseline_deep_rate_bhc": 0.03711428552232418,
+          "reformed_deep_rate_bhc": 0.03711428552232418
+        },
+        "inequality": {
+          "baseline_gini": 0.35146487644834634,
+          "reformed_gini": 0.3514322320318773
+        },
+        "avg_change_by_group": {
+          "deciles": [
+            {
+              "group": 1,
+              "avg_change_per_household": 4.913726641108015,
+              "total_change_bn": 0.014912125142429889,
+              "n_households": 3034789.3221563697
+            },
+            {
+              "group": 2,
+              "avg_change_per_household": 7.6069625372596175,
+              "total_change_bn": 0.024296285080988005,
+              "n_households": 3193953.5605680346
+            },
+            {
+              "group": 3,
+              "avg_change_per_household": 25.116831595472004,
+              "total_change_bn": 0.07235663073440483,
+              "n_households": 2880802.479379967
+            },
+            {
+              "group": 4,
+              "avg_change_per_household": 30.18226970911386,
+              "total_change_bn": 0.07857821953474198,
+              "n_households": 2603456.2772134542
+            },
+            {
+              "group": 5,
+              "avg_change_per_household": 23.22248348942473,
+              "total_change_bn": 0.06847266757180465,
+              "n_households": 2948550.5976562053
+            },
+            {
+              "group": 6,
+              "avg_change_per_household": 38.63583913342582,
+              "total_change_bn": 0.11589999249521422,
+              "n_households": 2999805.235107299
+            },
+            {
+              "group": 7,
+              "avg_change_per_household": 70.32984785325469,
+              "total_change_bn": 0.19916130979936797,
+              "n_households": 2831817.7257389203
+            },
+            {
+              "group": 8,
+              "avg_change_per_household": 64.58697580728553,
+              "total_change_bn": 0.17784477933930748,
+              "n_households": 2753570.3153211623
+            },
+            {
+              "group": 9,
+              "avg_change_per_household": 53.01115447199485,
+              "total_change_bn": 0.1631870405751107,
+              "n_households": 3078352.890075624
+            },
+            {
+              "group": 10,
+              "avg_change_per_household": 37.855883283082306,
+              "total_change_bn": 0.12320295572226853,
+              "n_households": 3254525.9821563214
+            }
+          ],
+          "quintiles": [
+            {
+              "group": 1,
+              "avg_change_per_household": 6.294754970888834,
+              "total_change_bn": 0.039208410223417894,
+              "n_households": 6228742.882724404
+            },
+            {
+              "group": 2,
+              "avg_change_per_household": 27.52146770749761,
+              "total_change_bn": 0.15093485026914683,
+              "n_households": 5484258.756593421
+            },
+            {
+              "group": 3,
+              "avg_change_per_household": 30.995566716351345,
+              "total_change_bn": 0.18437266006701886,
+              "n_households": 5948355.832763504
+            },
+            {
+              "group": 4,
+              "avg_change_per_household": 67.49863865628956,
+              "total_change_bn": 0.3770060891386755,
+              "n_households": 5585388.041060083
+            },
+            {
+              "group": 5,
+              "avg_change_per_household": 45.22271814689622,
+              "total_change_bn": 0.28638999629737927,
+              "n_households": 6332878.872231945
+            }
+          ],
+          "quartiles": [
+            {
+              "group": 1,
+              "avg_change_per_household": 8.47188294152287,
+              "total_change_bn": 0.06455699172117879,
+              "n_households": 7620146.804055616
+            },
+            {
+              "group": 2,
+              "avg_change_per_household": 27.559687933316454,
+              "total_change_bn": 0.19405893634319055,
+              "n_households": 7041405.4329184145
+            },
+            {
+              "group": 3,
+              "avg_change_per_household": 61.66067107553239,
+              "total_change_bn": 0.44170733075282625,
+              "n_households": 7163518.058565218
+            },
+            {
+              "group": 4,
+              "avg_change_per_household": 43.53425655009707,
+              "total_change_bn": 0.3375887471784426,
+              "n_households": 7754554.089834109
+            }
+          ]
+        }
+      },
+      {
+        "pass_through_rate": 0.6,
+        "gross_cost_bn": 5.961918330800139,
+        "fiscal_offset_bn": 1.075101020239624,
+        "offset_components_bn": {
+          "income_tax": 0.8439149513273926,
+          "employee_nics": 0.2405442041472168,
+          "benefits_saved": -0.009358135234985352
+        },
+        "net_cost_bn": 4.886817310560516,
+        "avg_wage_gain": 2052.802002174702,
+        "poverty": {
+          "baseline_rate_bhc": 0.14856379806654677,
+          "reformed_rate_bhc": 0.14816961051718544,
+          "baseline_rate_bhc_18_24": 0.16129733804205773,
+          "reformed_rate_bhc_18_24": 0.1555892327584104,
+          "people_lifted": 27670.13419151306,
+          "people_lifted_18_24": 25448.61927509308,
+          "baseline_deep_rate_bhc": 0.03711428552232418,
+          "reformed_deep_rate_bhc": 0.03711428552232418
+        },
+        "inequality": {
+          "baseline_gini": 0.35146487644834634,
+          "reformed_gini": 0.3514024995901455
+        },
+        "avg_change_by_group": {
+          "deciles": [
+            {
+              "group": 1,
+              "avg_change_per_household": 11.641741938463397,
+              "total_change_bn": 0.03533023412614872,
+              "n_households": 3034789.3221563697
+            },
+            {
+              "group": 2,
+              "avg_change_per_household": 18.148397421936508,
+              "total_change_bn": 0.05796513856439785,
+              "n_households": 3193953.5605680346
+            },
+            {
+              "group": 3,
+              "avg_change_per_household": 66.45239763579187,
+              "total_change_bn": 0.19143623186993264,
+              "n_households": 2880802.479379967
+            },
+            {
+              "group": 4,
+              "avg_change_per_household": 72.40047893153982,
+              "total_change_bn": 0.1884914813475778,
+              "n_households": 2603456.2772134542
+            },
+            {
+              "group": 5,
+              "avg_change_per_household": 55.731594696227106,
+              "total_change_bn": 0.16432742684989385,
+              "n_households": 2948550.5976562053
+            },
+            {
+              "group": 6,
+              "avg_change_per_household": 92.36928692491226,
+              "total_change_bn": 0.27708987048047995,
+              "n_households": 2999805.235107299
+            },
+            {
+              "group": 7,
+              "avg_change_per_household": 168.76904336119446,
+              "total_change_bn": 0.4779231685462309,
+              "n_households": 2831817.7257389203
+            },
+            {
+              "group": 8,
+              "avg_change_per_household": 154.87645588429035,
+              "total_change_bn": 0.4264632114651295,
+              "n_households": 2753570.3153211623
+            },
+            {
+              "group": 9,
+              "avg_change_per_household": 126.73086481937843,
+              "total_change_bn": 0.3901223239785168,
+              "n_households": 3078352.890075624
+            },
+            {
+              "group": 10,
+              "avg_change_per_household": 89.77157267249503,
+              "total_change_bn": 0.29216391572166944,
+              "n_households": 3254525.9821563214
+            }
+          ],
+          "quintiles": [
+            {
+              "group": 1,
+              "avg_change_per_household": 14.978202575884765,
+              "total_change_bn": 0.09329537269054657,
+              "n_households": 6228742.882724404
+            },
+            {
+              "group": 2,
+              "avg_change_per_household": 69.27603712365766,
+              "total_change_bn": 0.37992771321751045,
+              "n_households": 5484258.756593421
+            },
+            {
+              "group": 3,
+              "avg_change_per_household": 74.20828708650048,
+              "total_change_bn": 0.44141729733037377,
+              "n_households": 5948355.832763504
+            },
+            {
+              "group": 4,
+              "avg_change_per_household": 161.92006237756613,
+              "total_change_bn": 0.9043863800113604,
+              "n_households": 5585388.041060083
+            },
+            {
+              "group": 5,
+              "avg_change_per_household": 107.73713716392666,
+              "total_change_bn": 0.6822862397001862,
+              "n_households": 6332878.872231945
+            }
+          ],
+          "quartiles": [
+            {
+              "group": 1,
+              "avg_change_per_household": 23.09643880430479,
+              "total_change_bn": 0.17599825433968924,
+              "n_households": 7620146.804055616
+            },
+            {
+              "group": 2,
+              "avg_change_per_household": 65.54831458227288,
+              "total_change_bn": 0.4615522584182616,
+              "n_households": 7041405.4329184145
+            },
+            {
+              "group": 3,
+              "avg_change_per_household": 147.82150529697742,
+              "total_change_bn": 1.0589220226391918,
+              "n_households": 7163518.058565218
+            },
+            {
+              "group": 4,
+              "avg_change_per_household": 103.78939372000079,
+              "total_change_bn": 0.8048404675528348,
+              "n_households": 7754554.089834109
+            }
+          ]
+        }
+      },
+      {
+        "pass_through_rate": 0.76,
+        "gross_cost_bn": 5.961918330800139,
+        "fiscal_offset_bn": 1.3702507887722168,
+        "offset_components_bn": {
+          "income_tax": 1.0718418321551513,
+          "employee_nics": 0.30444904989001464,
+          "benefits_saved": -0.006040093272949219
+        },
+        "net_cost_bn": 4.591667542027922,
+        "avg_wage_gain": 2600.215869421289,
+        "poverty": {
+          "baseline_rate_bhc": 0.14856379806654677,
+          "reformed_rate_bhc": 0.14810220744190045,
+          "baseline_rate_bhc_18_24": 0.16129733804205773,
+          "reformed_rate_bhc_18_24": 0.15505861005348637,
+          "people_lifted": 32401.516857147217,
+          "people_lifted_18_24": 27814.310607910156,
+          "baseline_deep_rate_bhc": 0.03711428552232418,
+          "reformed_deep_rate_bhc": 0.03711428552232418
+        },
+        "inequality": {
+          "baseline_gini": 0.35146487644834634,
+          "reformed_gini": 0.35139481440932624
+        },
+        "avg_change_by_group": {
+          "deciles": [
+            {
+              "group": 1,
+              "avg_change_per_household": 14.717403708918077,
+              "total_change_bn": 0.04466421962568914,
+              "n_households": 3034789.3221563697
+            },
+            {
+              "group": 2,
+              "avg_change_per_household": 22.956128103899186,
+              "total_change_bn": 0.07332080709430473,
+              "n_households": 3193953.5605680346
+            },
+            {
+              "group": 3,
+              "avg_change_per_household": 81.69100896107727,
+              "total_change_bn": 0.2353356611581225,
+              "n_households": 2880802.479379967
+            },
+            {
+              "group": 4,
+              "avg_change_per_household": 91.67358850425627,
+              "total_change_bn": 0.23866817944608915,
+              "n_households": 2603456.2772134542
+            },
+            {
+              "group": 5,
+              "avg_change_per_household": 70.59006762314336,
+              "total_change_bn": 0.2081383860788113,
+              "n_households": 2948550.5976562053
+            },
+            {
+              "group": 6,
+              "avg_change_per_household": 116.86763141558586,
+              "total_change_bn": 0.3505801325350647,
+              "n_households": 2999805.235107299
+            },
+            {
+              "group": 7,
+              "avg_change_per_household": 213.904928009525,
+              "total_change_bn": 0.6057397667602806,
+              "n_households": 2831817.7257389203
+            },
+            {
+              "group": 8,
+              "avg_change_per_household": 196.09916059323706,
+              "total_change_bn": 0.539972827468935,
+              "n_households": 2753570.3153211623
+            },
+            {
+              "group": 9,
+              "avg_change_per_household": 160.42168647442867,
+              "total_change_bn": 0.4938345621893631,
+              "n_households": 3078352.890075624
+            },
+            {
+              "group": 10,
+              "avg_change_per_household": 113.57068691321145,
+              "total_change_bn": 0.3696187513703876,
+              "n_households": 3254525.9821563214
+            }
+          ],
+          "quintiles": [
+            {
+              "group": 1,
+              "avg_change_per_household": 18.9420287434289,
+              "total_change_bn": 0.11798502671999386,
+              "n_households": 6228742.882724404
+            },
+            {
+              "group": 2,
+              "avg_change_per_household": 86.4298826225774,
+              "total_change_bn": 0.47400384060421163,
+              "n_households": 5484258.756593421
+            },
+            {
+              "group": 3,
+              "avg_change_per_household": 93.92822728197565,
+              "total_change_bn": 0.558718518613876,
+              "n_households": 5948355.832763504
+            },
+            {
+              "group": 4,
+              "avg_change_per_household": 205.12676752388438,
+              "total_change_bn": 1.1457125942292157,
+              "n_households": 5585388.041060083
+            },
+            {
+              "group": 5,
+              "avg_change_per_household": 136.3445173956781,
+              "total_change_bn": 0.8634533135597507,
+              "n_households": 6332878.872231945
+            }
+          ],
+          "quartiles": [
+            {
+              "group": 1,
+              "avg_change_per_household": 28.44994877983501,
+              "total_change_bn": 0.21679278627020573,
+              "n_households": 7620146.804055616
+            },
+            {
+              "group": 2,
+              "avg_change_per_household": 82.84347104993208,
+              "total_change_bn": 0.5833344671328111,
+              "n_households": 7041405.4329184145
+            },
+            {
+              "group": 3,
+              "avg_change_per_household": 187.22675108784702,
+              "total_change_bn": 1.3412022124642873,
+              "n_households": 7163518.058565218
+            },
+            {
+              "group": 4,
+              "avg_change_per_household": 131.3478268460351,
+              "total_change_bn": 1.0185438278597438,
+              "n_households": 7754554.089834109
             }
           ]
         }
@@ -958,28 +1688,60 @@
       {
         "scenario": "low",
         "demand_elasticity": -0.15,
-        "avg_cost_wedge_pct": 0.10418274986395129,
-        "employment_gain_pct": 0.015627412479592692,
-        "new_jobs": 36917.71985727946,
-        "static_cost_per_job": 208143.0970147372
+        "avg_cost_wedge_pct": 0.09915521544452895,
+        "employment_gain_pct": 0.01487328231667934,
+        "new_jobs": 28767.781674440226,
+        "static_cost_per_job": 231752.70943019664
       },
       {
         "scenario": "central",
         "demand_elasticity": -0.31,
-        "avg_cost_wedge_pct": 0.10418274986395129,
-        "employment_gain_pct": 0.0322966524578249,
-        "new_jobs": 76296.62103837756,
-        "static_cost_per_job": 100714.40178132443
+        "avg_cost_wedge_pct": 0.09915521544452895,
+        "employment_gain_pct": 0.030738116787803974,
+        "new_jobs": 59453.41546050981,
+        "static_cost_per_job": 112138.4077888048
       },
       {
         "scenario": "high",
         "demand_elasticity": -0.5,
-        "avg_cost_wedge_pct": 0.10418274986395129,
-        "employment_gain_pct": 0.052091374931975645,
-        "new_jobs": 123059.06619093155,
-        "static_cost_per_job": 62442.92910442115
+        "avg_cost_wedge_pct": 0.09915521544452895,
+        "employment_gain_pct": 0.04957760772226447,
+        "new_jobs": 95892.60558146743,
+        "static_cost_per_job": 69525.81282905898
       }
-    ]
+    ],
+    "employment_excl_public": [
+      {
+        "scenario": "low",
+        "demand_elasticity": -0.15,
+        "avg_cost_wedge_pct": 0.09817321272702151,
+        "employment_gain_pct": 0.014725981909053226,
+        "new_jobs": 25661.05295774471,
+        "static_cost_per_job": 232333.34737344773
+      },
+      {
+        "scenario": "central",
+        "demand_elasticity": -0.31,
+        "avg_cost_wedge_pct": 0.09817321272702151,
+        "employment_gain_pct": 0.030433695945376666,
+        "new_jobs": 53032.842779339066,
+        "static_cost_per_job": 112419.3616323134
+      },
+      {
+        "scenario": "high",
+        "demand_elasticity": -0.5,
+        "avg_cost_wedge_pct": 0.09817321272702151,
+        "employment_gain_pct": 0.049086606363510754,
+        "new_jobs": 85536.84319248237,
+        "static_cost_per_job": 69700.00421203431
+      }
+    ],
+    "public_split": {
+      "n_public_employees": 191621.9566114992,
+      "public_share_of_employees": 0.09907081091655859,
+      "public_cost_bn": 0.7050930165477421,
+      "public_share_of_cost": 0.10575848454618668
+    }
   },
   "targeted": {
     "population_label": "Employees aged 21-24 who were NEET within the past year",
@@ -987,18 +1749,24 @@
     "lfs_panels": {
       "count": 7,
       "period": "Apr-Jun 2022 to Oct-Dec 2024",
-      "studies": "UKDA SN 9133, 9482, 9483, 9484, 9485, 9486, 9487",
+      "studies": "LFS 5-quarter longitudinal panels: lgwt22_5q_aj22_aj23_eul, lgwt24_5q_aj23_aj24_eul, lgwt24_5q_jm23_jm24_eul, lgwt24_5q_js22_js23_eul, lgwt24_5q_js23_js24_eul, lgwt24_5q_od22_od23_eul, lgwt24_5q_od23_od24_eul",
       "total_respondents": 16508,
       "employed_21_24_donors": 310,
       "neet_entrants_21_24": 41,
       "qrf_training_donors": 6256,
       "qrf_training_positives": 295
     },
-    "sensitivity_banded_cost_bn": 0.8490955564861075,
+    "sensitivity_banded_cost_bn": 0.7185114439484499,
+    "public_split": {
+      "n_public_employees": 16311.318510502577,
+      "public_share_of_employees": 0.06922524550329286,
+      "public_cost_bn": 0.0590536361925197,
+      "public_share_of_cost": 0.07634886670434712
+    },
     "static": {
-      "marginal_cost_bn": 1.1927768230446174,
-      "n_marginal_employees": 300871.02366751427,
-      "avg_saving_per_employee": 3964.412419996709,
+      "marginal_cost_bn": 0.7734710250670601,
+      "n_marginal_employees": 235626.73403197527,
+      "avg_saving_per_employee": 3282.6114924722324,
       "by_age_band": [
         {
           "group": "18-20",
@@ -1007,8 +1775,8 @@
         },
         {
           "group": "21-24",
-          "n_employees": 300871.02366751427,
-          "static_cost_bn": 1.1927768230446174
+          "n_employees": 235626.73403197527,
+          "static_cost_bn": 0.7734710250670601
         }
       ],
       "by_age": [
@@ -1029,234 +1797,485 @@
         },
         {
           "group": "21",
-          "n_employees": 4767.982135015171,
-          "static_cost_bn": 0.016891900756904447
+          "n_employees": 16373.156995162368,
+          "static_cost_bn": 0.057264781044746534
         },
         {
           "group": "22",
-          "n_employees": 13140.799538839563,
-          "static_cost_bn": 0.027559451107830993
+          "n_employees": 52664.1071818769,
+          "static_cost_bn": 0.16515934983652622
         },
         {
           "group": "23",
-          "n_employees": 244445.13868624042,
-          "static_cost_bn": 1.0476659206571821
+          "n_employees": 135601.41917704046,
+          "static_cost_bn": 0.5139569082297106
         },
         {
           "group": "24",
-          "n_employees": 38517.10330741908,
-          "static_cost_bn": 0.10065955052269994
+          "n_employees": 30988.050677895546,
+          "static_cost_bn": 0.037089985956076744
         }
       ],
       "by_gender": [
         {
           "group": "Female",
-          "n_employees": 142174.80449083724,
-          "static_cost_bn": 0.5153561936983525
+          "n_employees": 57558.4788993299,
+          "static_cost_bn": 0.1497792199738139
         },
         {
           "group": "Male",
-          "n_employees": 158696.21917667694,
-          "static_cost_bn": 0.6774206293462651
+          "n_employees": 178068.25513264537,
+          "static_cost_bn": 0.6236918050932462
         }
       ],
       "by_country": [
         {
           "group": "England",
-          "n_employees": 280957.76437805785,
-          "static_cost_bn": 1.1489511890888653
-        },
-        {
-          "group": "Scotland",
-          "n_employees": 10245.401811544552,
-          "static_cost_bn": 0.025713721764758744
+          "n_employees": 190322.35579037666,
+          "static_cost_bn": 0.6038986026008726
         },
         {
           "group": "Wales",
-          "n_employees": 7514.407394972201,
-          "static_cost_bn": 0.014778062130453663
+          "n_employees": 25570.19247493148,
+          "static_cost_bn": 0.12013902665964982
+        },
+        {
+          "group": "Scotland",
+          "n_employees": 9353.765977978706,
+          "static_cost_bn": 0.026350593401891796
         },
         {
           "group": "Northern Ireland",
-          "n_employees": 2153.450082939627,
-          "static_cost_bn": 0.0033338500605399712
+          "n_employees": 10380.419788688421,
+          "static_cost_bn": 0.023082802404645848
         }
       ],
       "by_region": [
         {
-          "group": "South East",
-          "n_employees": 147621.39288148144,
-          "static_cost_bn": 0.6697850112501396
-        },
-        {
-          "group": "London",
-          "n_employees": 108128.0941618839,
-          "static_cost_bn": 0.41210274447395445
-        },
-        {
-          "group": "Scotland",
-          "n_employees": 10245.401811544552,
-          "static_cost_bn": 0.025713721764758744
-        },
-        {
           "group": "Yorkshire",
-          "n_employees": 6989.329760238955,
-          "static_cost_bn": 0.02507359854252547
+          "n_employees": 41503.766513347626,
+          "static_cost_bn": 0.22778763040453923
         },
         {
           "group": "Wales",
-          "n_employees": 7514.407394972201,
-          "static_cost_bn": 0.014778062130453663
+          "n_employees": 25570.19247493148,
+          "static_cost_bn": 0.12013902665964982
         },
         {
-          "group": "East of England",
-          "n_employees": 8130.437318273607,
-          "static_cost_bn": 0.012165688935304828
-        },
-        {
-          "group": "East Midlands",
-          "n_employees": 3843.943290602998,
-          "static_cost_bn": 0.011698914811090134
-        },
-        {
-          "group": "North East",
-          "n_employees": 1538.2446970057304,
-          "static_cost_bn": 0.007446667031330152
-        },
-        {
-          "group": "West Midlands",
-          "n_employees": 2039.4507411348914,
-          "static_cost_bn": 0.004669500933631838
+          "group": "London",
+          "n_employees": 37089.756150484085,
+          "static_cost_bn": 0.07060012773707093
         },
         {
           "group": "North West",
-          "n_employees": 1928.4858933389412,
-          "static_cost_bn": 0.00402617455362511
+          "n_employees": 26880.163591861725,
+          "static_cost_bn": 0.0642531806827532
         },
         {
-          "group": "Northern Ireland",
-          "n_employees": 2153.450082939627,
-          "static_cost_bn": 0.0033338500605399712
+          "group": "West Midlands",
+          "n_employees": 22992.887856006622,
+          "static_cost_bn": 0.056180123537292855
+        },
+        {
+          "group": "South East",
+          "n_employees": 13683.404950618744,
+          "static_cost_bn": 0.05610731302258299
+        },
+        {
+          "group": "East of England",
+          "n_employees": 18621.962597846985,
+          "static_cost_bn": 0.05009838695092903
         },
         {
           "group": "South West",
-          "n_employees": 738.3856340973857,
-          "static_cost_bn": 0.0019828885572637854
+          "n_employees": 13539.873914718628,
+          "static_cost_bn": 0.03682038674612595
+        },
+        {
+          "group": "Scotland",
+          "n_employees": 9353.765977978706,
+          "static_cost_bn": 0.026350593401891796
+        },
+        {
+          "group": "East Midlands",
+          "n_employees": 9653.080683231354,
+          "static_cost_bn": 0.023284714368469482
+        },
+        {
+          "group": "Northern Ireland",
+          "n_employees": 10380.419788688421,
+          "static_cost_bn": 0.023082802404645848
+        },
+        {
+          "group": "North East",
+          "n_employees": 6357.459532260895,
+          "static_cost_bn": 0.018766739151108925
         }
       ],
       "by_income_decile": [
         {
           "group": "1",
-          "n_employees": 892.3538859708231,
-          "static_cost_bn": 0.0012035769441384534
+          "n_employees": 8932.167974233627,
+          "static_cost_bn": 0.015488072234822821
         },
         {
           "group": "2",
-          "n_employees": 7160.415604575752,
-          "static_cost_bn": 0.00832714755267395
+          "n_employees": 26075.234246969223,
+          "static_cost_bn": 0.048737279062864874
         },
         {
           "group": "3",
-          "n_employees": 11490.52361278349,
-          "static_cost_bn": 0.01256138451885241
+          "n_employees": 47803.05989009142,
+          "static_cost_bn": 0.08440658662823049
         },
         {
           "group": "4",
-          "n_employees": 99599.76610483874,
-          "static_cost_bn": 0.39052082891337464
+          "n_employees": 9944.104758024216,
+          "static_cost_bn": 0.022315717469670898
         },
         {
           "group": "5",
-          "n_employees": 8049.974579095061,
-          "static_cost_bn": 0.02660280156453614
+          "n_employees": 14543.778669729829,
+          "static_cost_bn": 0.03870315024396541
         },
         {
           "group": "6",
-          "n_employees": 25531.96387755157,
-          "static_cost_bn": 0.06773324503698917
+          "n_employees": 20816.78921839595,
+          "static_cost_bn": 0.046178425222421805
         },
         {
           "group": "7",
-          "n_employees": 86749.82786098727,
-          "static_cost_bn": 0.35434482875361556
+          "n_employees": 16643.62285387516,
+          "static_cost_bn": 0.06153657138725499
         },
         {
           "group": "8",
-          "n_employees": 54327.17985765289,
-          "static_cost_bn": 0.3035953999294537
+          "n_employees": 33491.86598208547,
+          "static_cost_bn": 0.16689898375509357
         },
         {
           "group": "9",
-          "n_employees": 2958.302290719371,
-          "static_cost_bn": 0.011347190718089841
+          "n_employees": 31045.445878371596,
+          "static_cost_bn": 0.11764965431142886
         },
         {
           "group": "10",
-          "n_employees": 4110.715993339263,
-          "static_cost_bn": 0.016540419112893744
+          "n_employees": 26330.664560198784,
+          "static_cost_bn": 0.1715565847513063
         }
       ],
       "by_income_quintile": [
         {
           "group": "1",
-          "n_employees": 8052.769490546574,
-          "static_cost_bn": 0.009530724496812403
+          "n_employees": 35007.40222120285,
+          "static_cost_bn": 0.0642253512976877
         },
         {
           "group": "2",
-          "n_employees": 111090.28971762223,
-          "static_cost_bn": 0.403082213432227
+          "n_employees": 57747.164648115635,
+          "static_cost_bn": 0.10672230409790139
         },
         {
           "group": "3",
-          "n_employees": 33581.93845664663,
-          "static_cost_bn": 0.09433604660152531
+          "n_employees": 35360.56788812578,
+          "static_cost_bn": 0.08488157546638721
         },
         {
           "group": "4",
-          "n_employees": 141077.00771864015,
-          "static_cost_bn": 0.6579402286830692
+          "n_employees": 50135.48883596063,
+          "static_cost_bn": 0.22843555514234862
         },
         {
           "group": "5",
-          "n_employees": 7069.018284058635,
-          "static_cost_bn": 0.027887609830983588
+          "n_employees": 57376.11043857038,
+          "static_cost_bn": 0.2892062390627352
         }
       ],
       "by_income_quartile": [
         {
           "group": "1",
-          "n_employees": 14694.217634254448,
-          "static_cost_bn": 0.016864437051712054
+          "n_employees": 46718.05158805847,
+          "static_cost_bn": 0.08836396147360366
         },
         {
           "group": "2",
-          "n_employees": 112498.81615300941,
-          "static_cost_bn": 0.42235130244186353
+          "n_employees": 60580.29395098984,
+          "static_cost_bn": 0.12128684416595084
         },
         {
           "group": "3",
-          "n_employees": 113608.97744249062,
-          "static_cost_bn": 0.4294435889893752
+          "n_employees": 60518.555808871984,
+          "static_cost_bn": 0.23094296604790573
         },
         {
           "group": "4",
-          "n_employees": 60069.01243775973,
-          "static_cost_bn": 0.3241174945616667
+          "n_employees": 67809.83268405497,
+          "static_cost_bn": 0.3328772533795999
+        }
+      ]
+    },
+    "static_excl_public": {
+      "marginal_cost_bn": 0.7144173888745403,
+      "n_marginal_employees": 219315.4155214727,
+      "avg_saving_per_employee": 3257.48824894889,
+      "by_age_band": [
+        {
+          "group": "18-20",
+          "n_employees": 0.0,
+          "static_cost_bn": 0.0
+        },
+        {
+          "group": "21-24",
+          "n_employees": 219315.4155214727,
+          "static_cost_bn": 0.7144173888745403
+        }
+      ],
+      "by_age": [
+        {
+          "group": "18",
+          "n_employees": 0.0,
+          "static_cost_bn": 0.0
+        },
+        {
+          "group": "19",
+          "n_employees": 0.0,
+          "static_cost_bn": 0.0
+        },
+        {
+          "group": "20",
+          "n_employees": 0.0,
+          "static_cost_bn": 0.0
+        },
+        {
+          "group": "21",
+          "n_employees": 13872.923287257552,
+          "static_cost_bn": 0.0441408165657346
+        },
+        {
+          "group": "22",
+          "n_employees": 49619.35748133063,
+          "static_cost_bn": 0.15117532444253062
+        },
+        {
+          "group": "23",
+          "n_employees": 125376.54760552943,
+          "static_cost_bn": 0.4836374868851675
+        },
+        {
+          "group": "24",
+          "n_employees": 30446.58714735508,
+          "static_cost_bn": 0.03546376098110762
+        }
+      ],
+      "by_gender": [
+        {
+          "group": "Female",
+          "n_employees": 51135.775842309,
+          "static_cost_bn": 0.12547611880176737
+        },
+        {
+          "group": "Male",
+          "n_employees": 168179.6396791637,
+          "static_cost_bn": 0.588941270072773
+        }
+      ],
+      "by_country": [
+        {
+          "group": "England",
+          "n_employees": 177113.32560157776,
+          "static_cost_bn": 0.5542411310153325
+        },
+        {
+          "group": "Wales",
+          "n_employees": 25089.4596709013,
+          "static_cost_bn": 0.11808956239559805
+        },
+        {
+          "group": "Scotland",
+          "n_employees": 9022.078271269798,
+          "static_cost_bn": 0.025394314713180537
+        },
+        {
+          "group": "Northern Ireland",
+          "n_employees": 8090.551977723837,
+          "static_cost_bn": 0.016692380750429264
+        }
+      ],
+      "by_region": [
+        {
+          "group": "Yorkshire",
+          "n_employees": 40745.05782556534,
+          "static_cost_bn": 0.2228562193831093
+        },
+        {
+          "group": "Wales",
+          "n_employees": 25089.4596709013,
+          "static_cost_bn": 0.11808956239559805
+        },
+        {
+          "group": "London",
+          "n_employees": 36351.26635432243,
+          "static_cost_bn": 0.06757697761162107
+        },
+        {
+          "group": "North West",
+          "n_employees": 25318.19321680069,
+          "static_cost_bn": 0.059081500703721784
+        },
+        {
+          "group": "South East",
+          "n_employees": 11685.004604101181,
+          "static_cost_bn": 0.04481224112617563
+        },
+        {
+          "group": "West Midlands",
+          "n_employees": 20236.392849445343,
+          "static_cost_bn": 0.044718914484628954
+        },
+        {
+          "group": "East of England",
+          "n_employees": 17659.316821098328,
+          "static_cost_bn": 0.044668787624941614
+        },
+        {
+          "group": "South West",
+          "n_employees": 13539.873914718628,
+          "static_cost_bn": 0.03682038674612595
+        },
+        {
+          "group": "Scotland",
+          "n_employees": 9022.078271269798,
+          "static_cost_bn": 0.025394314713180537
+        },
+        {
+          "group": "East Midlands",
+          "n_employees": 8209.970333576202,
+          "static_cost_bn": 0.01925765494040059
+        },
+        {
+          "group": "Northern Ireland",
+          "n_employees": 8090.551977723837,
+          "static_cost_bn": 0.016692380750429264
+        },
+        {
+          "group": "North East",
+          "n_employees": 3368.2496819496155,
+          "static_cost_bn": 0.01444844839460763
+        }
+      ],
+      "by_income_decile": [
+        {
+          "group": "1",
+          "n_employees": 8779.344865560532,
+          "static_cost_bn": 0.015319382990712128
+        },
+        {
+          "group": "2",
+          "n_employees": 26046.935459017754,
+          "static_cost_bn": 0.04871330938286999
+        },
+        {
+          "group": "3",
+          "n_employees": 47311.88621264696,
+          "static_cost_bn": 0.08301752727465601
+        },
+        {
+          "group": "4",
+          "n_employees": 8665.399765014648,
+          "static_cost_bn": 0.018960505012783076
+        },
+        {
+          "group": "5",
+          "n_employees": 11595.387145414948,
+          "static_cost_bn": 0.030916559365659624
+        },
+        {
+          "group": "6",
+          "n_employees": 17291.285767793655,
+          "static_cost_bn": 0.039713846386734364
+        },
+        {
+          "group": "7",
+          "n_employees": 14572.669546365738,
+          "static_cost_bn": 0.04851787960026431
+        },
+        {
+          "group": "8",
+          "n_employees": 31335.531462222338,
+          "static_cost_bn": 0.15508338918416453
+        },
+        {
+          "group": "9",
+          "n_employees": 27386.310737237334,
+          "static_cost_bn": 0.10261840492539004
+        },
+        {
+          "group": "10",
+          "n_employees": 26330.664560198784,
+          "static_cost_bn": 0.1715565847513063
+        }
+      ],
+      "by_income_quintile": [
+        {
+          "group": "1",
+          "n_employees": 34826.280324578285,
+          "static_cost_bn": 0.06403269237358211
+        },
+        {
+          "group": "2",
+          "n_employees": 55977.28597766161,
+          "static_cost_bn": 0.1019780322874391
+        },
+        {
+          "group": "3",
+          "n_employees": 28886.672913208604,
+          "static_cost_bn": 0.07063040575239399
+        },
+        {
+          "group": "4",
+          "n_employees": 45908.201008588076,
+          "static_cost_bn": 0.20360126878442883
+        },
+        {
+          "group": "5",
+          "n_employees": 53716.97529743612,
+          "static_cost_bn": 0.27417498967669635
+        }
+      ],
+      "by_income_quartile": [
+        {
+          "group": "1",
+          "n_employees": 46045.75601398945,
+          "static_cost_bn": 0.08678224319592359
+        },
+        {
+          "group": "2",
+          "n_employees": 56353.197433665395,
+          "static_cost_bn": 0.11014504083075723
+        },
+        {
+          "group": "3",
+          "n_employees": 54400.99053263664,
+          "static_cost_bn": 0.20978072668529488
+        },
+        {
+          "group": "4",
+          "n_employees": 62515.47154118121,
+          "static_cost_bn": 0.3077093781625647
         }
       ]
     },
     "pass_through": [
       {
         "pass_through_rate": 0.0,
-        "gross_cost_bn": 1.1927768230446174,
+        "gross_cost_bn": 0.7734710250670601,
         "fiscal_offset_bn": 0.0,
         "offset_components_bn": {
           "income_tax": 0.0,
           "employee_nics": 0.0,
           "benefits_saved": 0.0
         },
-        "net_cost_bn": 1.1927768230446174,
+        "net_cost_bn": 0.7734710250670601,
         "avg_wage_gain": 0.0,
         "poverty": null,
         "inequality": null,
@@ -1264,444 +2283,905 @@
       },
       {
         "pass_through_rate": 0.25,
-        "gross_cost_bn": 1.1927768230446174,
-        "fiscal_offset_bn": 0.0851450906594391,
+        "gross_cost_bn": 0.7734710250670601,
+        "fiscal_offset_bn": 0.05940130004634094,
         "offset_components_bn": {
-          "income_tax": 0.05916052883581543,
-          "employee_nics": 0.023418901589370728,
-          "benefits_saved": 0.0025656602342529295
+          "income_tax": 0.04640510281188965,
+          "employee_nics": 0.011225289045852661,
+          "benefits_saved": 0.0017709081885986329
         },
-        "net_cost_bn": 1.1076317323851783,
-        "avg_wage_gain": 991.1031049991773,
+        "net_cost_bn": 0.7140697250207192,
+        "avg_wage_gain": 820.6528731180581,
         "poverty": {
-          "baseline_rate_bhc": 0.09850257251754754,
-          "reformed_rate_bhc": 0.09850146414833703,
-          "baseline_rate_bhc_18_24": 0.10102398818208916,
-          "reformed_rate_bhc_18_24": 0.10100722752736845,
-          "people_lifted": 79.32252758741379,
-          "people_lifted_18_24": 74.6055560708046,
-          "baseline_deep_rate_bhc": 0.014956119079829633,
-          "reformed_deep_rate_bhc": 0.014956119079829633
+          "baseline_rate_bhc": 0.14856379806654677,
+          "reformed_rate_bhc": 0.14835994653822437,
+          "baseline_rate_bhc_18_24": 0.16129733804205773,
+          "reformed_rate_bhc_18_24": 0.15813897674275584,
+          "people_lifted": 14309.429998397827,
+          "people_lifted_18_24": 14081.018174171448,
+          "baseline_deep_rate_bhc": 0.03711428552232418,
+          "reformed_deep_rate_bhc": 0.03711428552232418
         },
         "inequality": {
-          "baseline_gini": 0.2977624272238969,
-          "reformed_gini": 0.2977496656538698
+          "baseline_gini": 0.35146487644834634,
+          "reformed_gini": 0.35146133261526835
         },
         "avg_change_by_group": {
           "deciles": [
             {
               "group": 1,
-              "avg_change_per_household": 0.05920530953438754,
-              "total_change_bn": 0.0002220041776623859,
-              "n_households": 3749734.262151636
+              "avg_change_per_household": 0.9923328867050585,
+              "total_change_bn": 0.0030115212485971182,
+              "n_households": 3034789.3221563697
             },
             {
               "group": 2,
-              "avg_change_per_household": 0.3475669491459119,
-              "total_change_bn": 0.0010425017992115207,
-              "n_households": 2999427.309683202
+              "avg_change_per_household": 2.665918446667176,
+              "total_change_bn": 0.008514819714916631,
+              "n_households": 3193953.5605680346
             },
             {
               "group": 3,
-              "avg_change_per_household": 0.7344562821422382,
-              "total_change_bn": 0.0023725035514979916,
-              "n_households": 3230285.599270729
+              "avg_change_per_household": 5.665654437973214,
+              "total_change_bn": 0.016321631352223347,
+              "n_households": 2880802.479379967
             },
             {
               "group": 4,
-              "avg_change_per_household": 20.210438447773083,
-              "total_change_bn": 0.07051195209124422,
-              "n_households": 3488887.7979296725
+              "avg_change_per_household": 1.6110190654611996,
+              "total_change_bn": 0.004194217698685513,
+              "n_households": 2603456.2772134542
             },
             {
               "group": 5,
-              "avg_change_per_household": 1.416337793837748,
-              "total_change_bn": 0.004785835115320984,
-              "n_households": 3379020.976594258
+              "avg_change_per_household": 2.3630841659455646,
+              "total_change_bn": 0.00696767322981071,
+              "n_households": 2948550.5976562053
             },
             {
               "group": 6,
-              "avg_change_per_household": 3.623865457908563,
-              "total_change_bn": 0.01100881077792567,
-              "n_households": 3037864.1000317847
+              "avg_change_per_household": 2.831735977484879,
+              "total_change_bn": 0.008494656409700823,
+              "n_households": 2999805.235107299
             },
             {
               "group": 7,
-              "avg_change_per_household": 20.097301637554107,
-              "total_change_bn": 0.06377608062971976,
-              "n_households": 3173365.349234091
+              "avg_change_per_household": 3.62580687405178,
+              "total_change_bn": 0.010267624176045856,
+              "n_households": 2831817.7257389203
             },
             {
               "group": 8,
-              "avg_change_per_household": 18.333131254100554,
-              "total_change_bn": 0.05456580586230201,
-              "n_households": 2976349.4902212806
+              "avg_change_per_household": 10.683027431763842,
+              "total_change_bn": 0.02941646721386659,
+              "n_households": 2753570.3153211623
             },
             {
               "group": 9,
-              "avg_change_per_household": 0.6278874761614229,
-              "total_change_bn": 0.001962023962153627,
-              "n_households": 3124801.8739733743
+              "avg_change_per_household": 6.113871412747765,
+              "total_change_bn": 0.018820653732982823,
+              "n_households": 3078352.890075624
             },
             {
               "group": 10,
-              "avg_change_per_household": 0.9181224349593674,
-              "total_change_bn": 0.0027858959400432425,
-              "n_households": 3034340.338460998
+              "avg_change_per_household": 8.585865553617731,
+              "total_change_bn": 0.027942922523549876,
+              "n_households": 3254525.9821563214
             }
           ],
           "quintiles": [
             {
               "group": 1,
-              "avg_change_per_household": 0.1873574907660917,
-              "total_change_bn": 0.0012645059768739066,
-              "n_households": 6749161.571834838
+              "avg_change_per_household": 1.850508389980647,
+              "total_change_bn": 0.011526340963513751,
+              "n_households": 6228742.882724404
             },
             {
               "group": 2,
-              "avg_change_per_household": 10.847235416354954,
-              "total_change_bn": 0.07288445564274222,
-              "n_households": 6719173.397200401
+              "avg_change_per_household": 3.7408608822922136,
+              "total_change_bn": 0.020515849050908863,
+              "n_households": 5484258.756593421
             },
             {
               "group": 3,
-              "avg_change_per_household": 2.4614194745016964,
-              "total_change_bn": 0.015794645893246653,
-              "n_households": 6416885.076626043
+              "avg_change_per_household": 2.5994291656771984,
+              "total_change_bn": 0.015462329639511533,
+              "n_households": 5948355.832763504
             },
             {
               "group": 4,
-              "avg_change_per_household": 19.243475442595045,
-              "total_change_bn": 0.11834188649202176,
-              "n_households": 6149714.839455372
+              "avg_change_per_household": 7.104983771616443,
+              "total_change_bn": 0.03968409138991244,
+              "n_households": 5585388.041060083
             },
             {
               "group": 5,
-              "avg_change_per_household": 0.7708735629795234,
-              "total_change_bn": 0.004747919902196869,
-              "n_households": 6159142.212434373
+              "avg_change_per_household": 7.384252438741411,
+              "total_change_bn": 0.0467635762565327,
+              "n_households": 6332878.872231945
             }
           ],
           "quartiles": [
             {
               "group": 1,
-              "avg_change_per_household": 0.35688726266172466,
-              "total_change_bn": 0.0029807722155631203,
-              "n_households": 8352139.533734055
+              "avg_change_per_household": 2.03477860536133,
+              "total_change_bn": 0.015505311686604883,
+              "n_households": 7620146.804055616
             },
             {
               "group": 2,
-              "avg_change_per_household": 8.940799249448105,
-              "total_change_bn": 0.07595402451937398,
-              "n_households": 8495216.41189544
+              "avg_change_per_household": 3.338048317420437,
+              "total_change_bn": 0.02350455155762844,
+              "n_households": 7041405.4329184145
             },
             {
               "group": 3,
-              "avg_change_per_household": 9.727516887633657,
-              "total_change_bn": 0.0760290098340251,
-              "n_households": 7815870.248519314
+              "avg_change_per_household": 5.7040141259002315,
+              "total_change_bn": 0.04086080819719741,
+              "n_households": 7163518.058565218
             },
             {
               "group": 4,
-              "avg_change_per_household": 7.7108958978174815,
-              "total_change_bn": 0.05806960733811921,
-              "n_households": 7530850.903402214
+              "avg_change_per_household": 6.974161922456267,
+              "total_change_bn": 0.05408151585894856,
+              "n_households": 7754554.089834109
             }
           ]
         }
       },
       {
         "pass_through_rate": 0.6,
-        "gross_cost_bn": 1.1927768230446174,
-        "fiscal_offset_bn": 0.20496299487143707,
+        "gross_cost_bn": 0.7734710250670601,
+        "fiscal_offset_bn": 0.14779656552983092,
         "offset_components_bn": {
-          "income_tax": 0.14258408147576904,
-          "employee_nics": 0.05638254269644928,
-          "benefits_saved": 0.00599637069921875
+          "income_tax": 0.11619490703515625,
+          "employee_nics": 0.027521347878097534,
+          "benefits_saved": 0.004080310616577148
         },
-        "net_cost_bn": 0.9878138281731803,
-        "avg_wage_gain": 2378.6474519980256,
+        "net_cost_bn": 0.6256744595372292,
+        "avg_wage_gain": 1969.5668954833395,
         "poverty": {
-          "baseline_rate_bhc": 0.09850257251754754,
-          "reformed_rate_bhc": 0.09849602743023017,
-          "baseline_rate_bhc_18_24": 0.10102398818208916,
-          "reformed_rate_bhc_18_24": 0.10091981599883697,
-          "people_lifted": 468.41148632764816,
-          "people_lifted_18_24": 463.69451481103897,
-          "baseline_deep_rate_bhc": 0.014956119079829633,
-          "reformed_deep_rate_bhc": 0.014956119079829633
+          "baseline_rate_bhc": 0.14856379806654677,
+          "reformed_rate_bhc": 0.14835994653822437,
+          "baseline_rate_bhc_18_24": 0.16129733804205773,
+          "reformed_rate_bhc_18_24": 0.15813897674275584,
+          "people_lifted": 14309.429998397827,
+          "people_lifted_18_24": 14081.018174171448,
+          "baseline_deep_rate_bhc": 0.03711428552232418,
+          "reformed_deep_rate_bhc": 0.03711428552232418
         },
         "inequality": {
-          "baseline_gini": 0.2977624272238969,
-          "reformed_gini": 0.29773722828755184
+          "baseline_gini": 0.35146487644834634,
+          "reformed_gini": 0.3514580198458192
         },
         "avg_change_by_group": {
           "deciles": [
             {
               "group": 1,
-              "avg_change_per_household": 0.14208194442017139,
-              "total_change_bn": 0.000532769535025441,
-              "n_households": 3749734.262151636
+              "avg_change_per_household": 2.299568381250371,
+              "total_change_bn": 0.0069787055689870345,
+              "n_households": 3034789.3221563697
             },
             {
               "group": 2,
-              "avg_change_per_household": 0.7777744789054225,
-              "total_change_bn": 0.0023328780128035456,
-              "n_households": 2999427.309683202
+              "avg_change_per_household": 6.3332276968689065,
+              "total_change_bn": 0.020228035152302537,
+              "n_households": 3193953.5605680346
             },
             {
               "group": 3,
-              "avg_change_per_household": 1.6842352363822566,
-              "total_change_bn": 0.0054405608298699355,
-              "n_households": 3230285.599270729
+              "avg_change_per_household": 12.96397175247137,
+              "total_change_bn": 0.037346641967131375,
+              "n_households": 2880802.479379967
             },
             {
               "group": 4,
-              "avg_change_per_household": 48.487951226647695,
-              "total_change_bn": 0.16916902138126025,
-              "n_households": 3488887.7979296725
+              "avg_change_per_household": 3.834606412037717,
+              "total_change_bn": 0.009983230134062555,
+              "n_households": 2603456.2772134542
             },
             {
               "group": 5,
-              "avg_change_per_household": 3.399187757240318,
-              "total_change_bn": 0.011485926735097424,
-              "n_households": 3379020.976594258
+              "avg_change_per_household": 5.670736118335264,
+              "total_change_bn": 0.016720452370868073,
+              "n_households": 2948550.5976562053
             },
             {
               "group": 6,
-              "avg_change_per_household": 8.697297879765586,
-              "total_change_bn": 0.02642120899622243,
-              "n_households": 3037864.1000317847
+              "avg_change_per_household": 6.795998491539101,
+              "total_change_bn": 0.0203866718527003,
+              "n_households": 2999805.235107299
             },
             {
               "group": 7,
-              "avg_change_per_household": 48.230856760015804,
-              "total_change_bn": 0.15305412960610695,
-              "n_households": 3173365.349234091
+              "avg_change_per_household": 8.690745641637578,
+              "total_change_bn": 0.02461060755787756,
+              "n_households": 2831817.7257389203
             },
             {
               "group": 8,
-              "avg_change_per_household": 43.999403906583694,
-              "total_change_bn": 0.1309576033874006,
-              "n_households": 2976349.4902212806
+              "avg_change_per_household": 25.639698399367276,
+              "total_change_bn": 0.07060071240628525,
+              "n_households": 2753570.3153211623
             },
             {
               "group": 9,
-              "avg_change_per_household": 1.5069532450743843,
-              "total_change_bn": 0.004708930324198694,
-              "n_households": 3124801.8739733743
+              "avg_change_per_household": 14.673292842210703,
+              "total_change_bn": 0.04516957342774528,
+              "n_households": 3078352.890075624
             },
             {
               "group": 10,
-              "avg_change_per_household": 2.1628377866167114,
-              "total_change_bn": 0.006562785941478789,
-              "n_households": 3034340.338460998
+              "avg_change_per_household": 19.734546466121344,
+              "total_change_bn": 0.06422659422006313,
+              "n_households": 3254525.9821563214
             }
           ],
           "quintiles": [
             {
               "group": 1,
-              "avg_change_per_household": 0.42459311683805595,
-              "total_change_bn": 0.002865647547828987,
-              "n_households": 6749161.571834838
+              "avg_change_per_household": 4.3679344666398485,
+              "total_change_bn": 0.02720674072128957,
+              "n_households": 6228742.882724404
             },
             {
               "group": 2,
-              "avg_change_per_household": 25.986765319061824,
-              "total_change_bn": 0.1746095822111302,
-              "n_households": 6719173.397200401
+              "avg_change_per_household": 8.630131108290948,
+              "total_change_bn": 0.047329872101193916,
+              "n_households": 5484258.756593421
             },
             {
               "group": 3,
-              "avg_change_per_household": 5.907404492780971,
-              "total_change_bn": 0.03790713573131985,
-              "n_households": 6416885.076626043
+              "avg_change_per_household": 6.238215276090677,
+              "total_change_bn": 0.03710712422356837,
+              "n_households": 5948355.832763504
             },
             {
               "group": 4,
-              "avg_change_per_household": 46.18291098171636,
-              "total_change_bn": 0.28401173299350757,
-              "n_households": 6149714.839455372
+              "avg_change_per_household": 17.046500487384602,
+              "total_change_bn": 0.09521131996416282,
+              "n_households": 5585388.041060083
             },
             {
               "group": 5,
-              "avg_change_per_household": 1.8300789098393602,
-              "total_change_bn": 0.011271716265677481,
-              "n_households": 6159142.212434373
+              "avg_change_per_household": 17.274318655845864,
+              "total_change_bn": 0.1093961676478084,
+              "n_households": 6332878.872231945
             }
           ],
           "quartiles": [
             {
               "group": 1,
-              "avg_change_per_household": 0.8059331584187177,
-              "total_change_bn": 0.006731266193976124,
-              "n_households": 8352139.533734055
+              "avg_change_per_household": 4.805099478740989,
+              "total_change_bn": 0.03661556343609746,
+              "n_households": 7620146.804055616
             },
             {
               "group": 2,
-              "avg_change_per_household": 21.45088264554541,
-              "total_change_bn": 0.18222989030008044,
-              "n_households": 8495216.41189544
+              "avg_change_per_household": 7.760027778233917,
+              "total_change_bn": 0.054641501757254116,
+              "n_households": 7041405.4329184145
             },
             {
               "group": 3,
-              "avg_change_per_household": 23.344966316505992,
-              "total_change_bn": 0.18246122768586473,
-              "n_households": 7815870.248519314
+              "avg_change_per_household": 13.685228495852197,
+              "total_change_bn": 0.09803438146562854,
+              "n_households": 7163518.058565218
             },
             {
               "group": 4,
-              "avg_change_per_household": 18.489734075951063,
-              "total_change_bn": 0.13924343056954278,
-              "n_households": 7530850.903402214
+              "avg_change_per_household": 16.372286082249637,
+              "total_change_bn": 0.12695977799904298,
+              "n_households": 7754554.089834109
             }
           ]
         }
       },
       {
         "pass_through_rate": 0.76,
-        "gross_cost_bn": 1.1927768230446174,
-        "fiscal_offset_bn": 0.25982228756813047,
+        "gross_cost_bn": 0.7734710250670601,
+        "fiscal_offset_bn": 0.18841614926156616,
         "offset_components_bn": {
-          "income_tax": 0.18088273513293457,
-          "employee_nics": 0.0713875782992096,
-          "benefits_saved": 0.0075519741359863285
+          "income_tax": 0.1483100428909912,
+          "employee_nics": 0.03495497475918579,
+          "benefits_saved": 0.00515113161138916
         },
-        "net_cost_bn": 0.9329545354764869,
-        "avg_wage_gain": 3012.953439197499,
+        "net_cost_bn": 0.585054875805494,
+        "avg_wage_gain": 2494.7847342788964,
         "poverty": {
-          "baseline_rate_bhc": 0.09850257251754754,
-          "reformed_rate_bhc": 0.09849602743023017,
-          "baseline_rate_bhc_18_24": 0.10102398818208916,
-          "reformed_rate_bhc_18_24": 0.10091981599883697,
-          "people_lifted": 468.41148632764816,
-          "people_lifted_18_24": 463.69451481103897,
-          "baseline_deep_rate_bhc": 0.014956119079829633,
-          "reformed_deep_rate_bhc": 0.014956119079829633
+          "baseline_rate_bhc": 0.14856379806654677,
+          "reformed_rate_bhc": 0.14835994653822437,
+          "baseline_rate_bhc_18_24": 0.16129733804205773,
+          "reformed_rate_bhc_18_24": 0.15813897674275584,
+          "people_lifted": 14309.429998397827,
+          "people_lifted_18_24": 14081.018174171448,
+          "baseline_deep_rate_bhc": 0.03711428552232418,
+          "reformed_deep_rate_bhc": 0.03711428552232418
         },
         "inequality": {
-          "baseline_gini": 0.2977624272238969,
-          "reformed_gini": 0.2977338177688486
+          "baseline_gini": 0.35146487644834634,
+          "reformed_gini": 0.35145716716875564
         },
         "avg_change_by_group": {
           "deciles": [
             {
               "group": 1,
-              "avg_change_per_household": 0.17994600200503877,
-              "total_change_bn": 0.0006747496890555009,
-              "n_households": 3749734.262151636
+              "avg_change_per_household": 2.8960415167856355,
+              "total_change_bn": 0.008788875871662584,
+              "n_households": 3034789.3221563697
             },
             {
               "group": 2,
-              "avg_change_per_household": 0.9683446054248407,
-              "total_change_bn": 0.0029044792546956714,
-              "n_households": 2999427.309683202
+              "avg_change_per_household": 8.002979364480423,
+              "total_change_bn": 0.025561144436334754,
+              "n_households": 3193953.5605680346
             },
             {
               "group": 3,
-              "avg_change_per_household": 2.1008384714922386,
-              "total_change_bn": 0.006786308260855307,
-              "n_households": 3230285.599270729
+              "avg_change_per_household": 16.23865190326664,
+              "total_change_bn": 0.046780348664718745,
+              "n_households": 2880802.479379967
             },
             {
               "group": 4,
-              "avg_change_per_household": 61.388815183525665,
-              "total_change_bn": 0.2141786882231625,
-              "n_households": 3488887.7979296725
+              "avg_change_per_household": 4.832823177255207,
+              "total_change_bn": 0.012582043837487738,
+              "n_households": 2603456.2772134542
             },
             {
               "group": 5,
-              "avg_change_per_household": 4.305623426216678,
-              "total_change_bn": 0.014548791874501794,
-              "n_households": 3379020.976594258
+              "avg_change_per_household": 7.182510675875603,
+              "total_change_bn": 0.021177996146025085,
+              "n_households": 2948550.5976562053
             },
             {
               "group": 6,
-              "avg_change_per_household": 11.016607207183098,
-              "total_change_bn": 0.033466955538852955,
-              "n_households": 3037864.1000317847
+              "avg_change_per_household": 8.608239737170072,
+              "total_change_bn": 0.025823042628621458,
+              "n_households": 2999805.235107299
             },
             {
               "group": 7,
-              "avg_change_per_household": 61.108534673201135,
-              "total_change_bn": 0.19391970647440648,
-              "n_households": 3173365.349234091
+              "avg_change_per_household": 11.028699708910136,
+              "total_change_bn": 0.031231267327543392,
+              "n_households": 2831817.7257389203
             },
             {
               "group": 8,
-              "avg_change_per_household": 55.73252056528049,
-              "total_change_bn": 0.1658794591732196,
-              "n_households": 2976349.4902212806
+              "avg_change_per_household": 32.46866445393926,
+              "total_change_bn": 0.08940475061849054,
+              "n_households": 2753570.3153211623
             },
             {
               "group": 9,
-              "avg_change_per_household": 1.911046709422786,
-              "total_change_bn": 0.005971642338854972,
-              "n_households": 3124801.8739733743
+              "avg_change_per_household": 18.58621642042206,
+              "total_change_bn": 0.05721493303337726,
+              "n_households": 3078352.890075624
             },
             {
               "group": 10,
-              "avg_change_per_household": 2.7377987630775937,
-              "total_change_bn": 0.008307413225394968,
-              "n_households": 3034340.338460998
+              "avg_change_per_household": 24.831353510682952,
+              "total_change_bn": 0.08081428517262626,
+              "n_households": 3254525.9821563214
             }
           ],
           "quintiles": [
             {
               "group": 1,
-              "avg_change_per_household": 0.5303220119500144,
-              "total_change_bn": 0.0035792289437511725,
-              "n_households": 6749161.571834838
+              "avg_change_per_household": 5.514759712311788,
+              "total_change_bn": 0.03435002030799733,
+              "n_households": 6228742.882724404
             },
             {
               "group": 2,
-              "avg_change_per_household": 32.88574106095918,
-              "total_change_bn": 0.2209649964840178,
-              "n_households": 6719173.397200401
+              "avg_change_per_household": 10.824141444974375,
+              "total_change_bn": 0.059362392502206485,
+              "n_households": 5484258.756593421
             },
             {
               "group": 3,
-              "avg_change_per_household": 7.482718926704095,
-              "total_change_bn": 0.048015747413354744,
-              "n_households": 6416885.076626043
+              "avg_change_per_household": 7.901517679182059,
+              "total_change_bn": 0.04700103877464655,
+              "n_households": 5948355.832763504
             },
             {
               "group": 4,
-              "avg_change_per_household": 58.50664218432125,
-              "total_change_bn": 0.35979916564762604,
-              "n_households": 6149714.839455372
+              "avg_change_per_household": 21.598502567627825,
+              "total_change_bn": 0.12063601794603396,
+              "n_households": 5585388.041060083
             },
             {
               "group": 5,
-              "avg_change_per_household": 2.3183513339605466,
-              "total_change_bn": 0.01427905556424994,
-              "n_households": 6159142.212434373
+              "avg_change_per_household": 21.795651076041636,
+              "total_change_bn": 0.13802921820600356,
+              "n_households": 6332878.872231945
             }
           ],
           "quartiles": [
             {
               "group": 1,
-              "avg_change_per_household": 1.002491068513501,
-              "total_change_bn": 0.008372945285546905,
-              "n_households": 8352139.533734055
+              "avg_change_per_household": 6.0678031560103785,
+              "total_change_bn": 0.04623755082691107,
+              "n_households": 7620146.804055616
             },
             {
               "group": 2,
-              "avg_change_per_household": 27.15882219241145,
-              "total_change_bn": 0.23072007201672387,
-              "n_households": 8495216.41189544
+              "avg_change_per_household": 9.749880018038336,
+              "total_change_bn": 0.06865285812931783,
+              "n_households": 7041405.4329184145
             },
             {
               "group": 3,
-              "avg_change_per_household": 29.576846526024518,
-              "total_change_bn": 0.23116879480777686,
-              "n_households": 7815870.248519314
+              "avg_change_per_household": 17.34270927095153,
+              "total_change_bn": 0.12423481104690773,
+              "n_households": 7163518.058565218
             },
             {
               "group": 4,
-              "avg_change_per_household": 23.420511733046066,
-              "total_change_bn": 0.17637638194295213,
-              "n_households": 7530850.903402214
+              "avg_change_per_household": 20.66572311924895,
+              "total_change_bn": 0.16025346773375124,
+              "n_households": 7754554.089834109
+            }
+          ]
+        }
+      }
+    ],
+    "pass_through_excl_public": [
+      {
+        "pass_through_rate": 0.0,
+        "gross_cost_bn": 0.7144173888745403,
+        "fiscal_offset_bn": 0.0,
+        "offset_components_bn": {
+          "income_tax": 0.0,
+          "employee_nics": 0.0,
+          "benefits_saved": 0.0
+        },
+        "net_cost_bn": 0.7144173888745403,
+        "avg_wage_gain": 0.0,
+        "poverty": null,
+        "inequality": null,
+        "avg_change_by_group": null
+      },
+      {
+        "pass_through_rate": 0.25,
+        "gross_cost_bn": 0.7144173888745403,
+        "fiscal_offset_bn": 0.05480603573406982,
+        "offset_components_bn": {
+          "income_tax": 0.04275473272137451,
+          "employee_nics": 0.010364633804748535,
+          "benefits_saved": 0.0016866692079467774
+        },
+        "net_cost_bn": 0.6596113531404705,
+        "avg_wage_gain": 814.3720622372225,
+        "poverty": {
+          "baseline_rate_bhc": 0.14856379806654677,
+          "reformed_rate_bhc": 0.14835994653822437,
+          "baseline_rate_bhc_18_24": 0.16129733804205773,
+          "reformed_rate_bhc_18_24": 0.15813897674275584,
+          "people_lifted": 14309.429998397827,
+          "people_lifted_18_24": 14081.018174171448,
+          "baseline_deep_rate_bhc": 0.03711428552232418,
+          "reformed_deep_rate_bhc": 0.03711428552232418
+        },
+        "inequality": {
+          "baseline_gini": 0.35146487644834634,
+          "reformed_gini": 0.3514618067341445
+        },
+        "avg_change_by_group": {
+          "deciles": [
+            {
+              "group": 1,
+              "avg_change_per_household": 0.978665409773413,
+              "total_change_bn": 0.002970043335544142,
+              "n_households": 3034789.3221563697
+            },
+            {
+              "group": 2,
+              "avg_change_per_household": 2.6640422832298474,
+              "total_change_bn": 0.008508827336025766,
+              "n_households": 3193953.5605680346
+            },
+            {
+              "group": 3,
+              "avg_change_per_household": 5.578862295832245,
+              "total_change_bn": 0.016071600333952944,
+              "n_households": 2880802.479379967
+            },
+            {
+              "group": 4,
+              "avg_change_per_household": 1.3728801488602835,
+              "total_change_bn": 0.0035742334414120467,
+              "n_households": 2603456.2772134542
+            },
+            {
+              "group": 5,
+              "avg_change_per_household": 1.8877355273994976,
+              "total_change_bn": 0.005566083717530641,
+              "n_households": 2948550.5976562053
+            },
+            {
+              "group": 6,
+              "avg_change_per_household": 2.3941073448979204,
+              "total_change_bn": 0.007181855746633617,
+              "n_households": 2999805.235107299
+            },
+            {
+              "group": 7,
+              "avg_change_per_household": 2.8923908476940827,
+              "total_change_bn": 0.008190723672265126,
+              "n_households": 2831817.7257389203
+            },
+            {
+              "group": 8,
+              "avg_change_per_household": 10.046123761588106,
+              "total_change_bn": 0.02766270817395158,
+              "n_households": 2753570.3153211623
+            },
+            {
+              "group": 9,
+              "avg_change_per_household": 5.234960356047064,
+              "total_change_bn": 0.016115055341468797,
+              "n_households": 3078352.890075624
+            },
+            {
+              "group": 10,
+              "avg_change_per_household": 8.585865553617731,
+              "total_change_bn": 0.027942922523549876,
+              "n_households": 3254525.9821563214
+            }
+          ],
+          "quintiles": [
+            {
+              "group": 1,
+              "avg_change_per_household": 1.8428872226219009,
+              "total_change_bn": 0.01147887067156991,
+              "n_households": 6228742.882724404
+            },
+            {
+              "group": 2,
+              "avg_change_per_household": 3.5822222559695773,
+              "total_change_bn": 0.019645833775364996,
+              "n_households": 5484258.756593421
+            },
+            {
+              "group": 3,
+              "avg_change_per_household": 2.1431030393220074,
+              "total_change_bn": 0.012747939464164257,
+              "n_households": 5948355.832763504
+            },
+            {
+              "group": 4,
+              "avg_change_per_household": 6.419147887782543,
+              "total_change_bn": 0.035853431846216706,
+              "n_households": 5585388.041060083
+            },
+            {
+              "group": 5,
+              "avg_change_per_household": 6.957022035934027,
+              "total_change_bn": 0.04405797786501867,
+              "n_households": 6332878.872231945
+            }
+          ],
+          "quartiles": [
+            {
+              "group": 1,
+              "avg_change_per_household": 1.9957371908237642,
+              "total_change_bn": 0.01520781037639064,
+              "n_households": 7620146.804055616
+            },
+            {
+              "group": 2,
+              "avg_change_per_household": 3.050950267348967,
+              "total_change_bn": 0.021482977788074904,
+              "n_households": 7041405.4329184145
+            },
+            {
+              "group": 3,
+              "avg_change_per_household": 5.19870598449323,
+              "total_change_bn": 0.037241024201088324,
+              "n_households": 7163518.058565218
+            },
+            {
+              "group": 4,
+              "avg_change_per_household": 6.428769556477121,
+              "total_change_bn": 0.04985224125678067,
+              "n_households": 7754554.089834109
+            }
+          ]
+        }
+      },
+      {
+        "pass_through_rate": 0.6,
+        "gross_cost_bn": 0.7144173888745403,
+        "fiscal_offset_bn": 0.13666669604185486,
+        "offset_components_bn": {
+          "income_tax": 0.10734030633203125,
+          "employee_nics": 0.025446975811813353,
+          "benefits_saved": 0.003879413898010254
+        },
+        "net_cost_bn": 0.5777506928326854,
+        "avg_wage_gain": 1954.4929493693342,
+        "poverty": {
+          "baseline_rate_bhc": 0.14856379806654677,
+          "reformed_rate_bhc": 0.14835994653822437,
+          "baseline_rate_bhc_18_24": 0.16129733804205773,
+          "reformed_rate_bhc_18_24": 0.15813897674275584,
+          "people_lifted": 14309.429998397827,
+          "people_lifted_18_24": 14081.018174171448,
+          "baseline_deep_rate_bhc": 0.03711428552232418,
+          "reformed_deep_rate_bhc": 0.03711428552232418
+        },
+        "inequality": {
+          "baseline_gini": 0.35146487644834634,
+          "reformed_gini": 0.35145900667953284
+        },
+        "avg_change_by_group": {
+          "deciles": [
+            {
+              "group": 1,
+              "avg_change_per_household": 2.2694919639511975,
+              "total_change_bn": 0.006887429978918783,
+              "n_households": 3034789.3221563697
+            },
+            {
+              "group": 2,
+              "avg_change_per_household": 6.328724873470485,
+              "total_change_bn": 0.020213653343476537,
+              "n_households": 3193953.5605680346
+            },
+            {
+              "group": 3,
+              "avg_change_per_household": 12.755671217202138,
+              "total_change_bn": 0.0367465692686716,
+              "n_households": 2880802.479379967
+            },
+            {
+              "group": 4,
+              "avg_change_per_household": 3.2698599559670374,
+              "total_change_bn": 0.008512937427971292,
+              "n_households": 2603456.2772134542
+            },
+            {
+              "group": 5,
+              "avg_change_per_household": 4.529902364751586,
+              "total_change_bn": 0.013356646324912548,
+              "n_households": 2948550.5976562053
+            },
+            {
+              "group": 6,
+              "avg_change_per_household": 5.745694577826063,
+              "total_change_bn": 0.017235964673890245,
+              "n_households": 2999805.235107299
+            },
+            {
+              "group": 7,
+              "avg_change_per_household": 6.957589535387497,
+              "total_change_bn": 0.01970262537472593,
+              "n_households": 2831817.7257389203
+            },
+            {
+              "group": 8,
+              "avg_change_per_household": 24.110687275046608,
+              "total_change_bn": 0.06639047276256002,
+              "n_households": 2753570.3153211623
+            },
+            {
+              "group": 9,
+              "avg_change_per_household": 12.563885570440787,
+              "total_change_bn": 0.03867607345634583,
+              "n_households": 3078352.890075624
+            },
+            {
+              "group": 10,
+              "avg_change_per_household": 19.734546466121344,
+              "total_change_bn": 0.06422659422006313,
+              "n_households": 3254525.9821563214
+            }
+          ],
+          "quintiles": [
+            {
+              "group": 1,
+              "avg_change_per_household": 4.350971589718521,
+              "total_change_bn": 0.02710108332239532,
+              "n_households": 6228742.882724404
+            },
+            {
+              "group": 2,
+              "avg_change_per_household": 8.252620582905555,
+              "total_change_bn": 0.04525950669664289,
+              "n_households": 5484258.756593421
+            },
+            {
+              "group": 3,
+              "avg_change_per_household": 5.143036472414595,
+              "total_change_bn": 0.030592610998802793,
+              "n_households": 5948355.832763504
+            },
+            {
+              "group": 4,
+              "avg_change_per_household": 15.413986907335069,
+              "total_change_bn": 0.08609309813728598,
+              "n_households": 5585388.041060083
+            },
+            {
+              "group": 5,
+              "avg_change_per_household": 16.24895560968501,
+              "total_change_bn": 0.10290266767640895,
+              "n_households": 6332878.872231945
+            }
+          ],
+          "quartiles": [
+            {
+              "group": 1,
+              "avg_change_per_household": 4.712485764661568,
+              "total_change_bn": 0.03590983333874343,
+              "n_households": 7620146.804055616
+            },
+            {
+              "group": 2,
+              "avg_change_per_household": 7.0735030782858805,
+              "total_change_bn": 0.04980740300520733,
+              "n_households": 7041405.4329184145
+            },
+            {
+              "group": 3,
+              "avg_change_per_household": 12.483011530152679,
+              "total_change_bn": 0.08942227852152655,
+              "n_households": 7163518.058565218
+            },
+            {
+              "group": 4,
+              "avg_change_per_household": 15.063335765391184,
+              "total_change_bn": 0.11680945196605862,
+              "n_households": 7754554.089834109
+            }
+          ]
+        }
+      },
+      {
+        "pass_through_rate": 0.76,
+        "gross_cost_bn": 0.7144173888745403,
+        "fiscal_offset_bn": 0.17427444941018677,
+        "offset_components_bn": {
+          "income_tax": 0.13707169672167968,
+          "employee_nics": 0.032325235818572995,
+          "benefits_saved": 0.004877516869934082
+        },
+        "net_cost_bn": 0.5401429394643535,
+        "avg_wage_gain": 2475.6910692011566,
+        "poverty": {
+          "baseline_rate_bhc": 0.14856379806654677,
+          "reformed_rate_bhc": 0.14835994653822437,
+          "baseline_rate_bhc_18_24": 0.16129733804205773,
+          "reformed_rate_bhc_18_24": 0.15813897674275584,
+          "people_lifted": 14309.429998397827,
+          "people_lifted_18_24": 14081.018174171448,
+          "baseline_deep_rate_bhc": 0.03711428552232418,
+          "reformed_deep_rate_bhc": 0.03711428552232418
+        },
+        "inequality": {
+          "baseline_gini": 0.35146487644834634,
+          "reformed_gini": 0.3514583278507419
+        },
+        "avg_change_by_group": {
+          "deciles": [
+            {
+              "group": 1,
+              "avg_change_per_household": 2.8595855818846827,
+              "total_change_bn": 0.008678239789695945,
+              "n_households": 3034789.3221563697
+            },
+            {
+              "group": 2,
+              "avg_change_per_household": 7.9972757876281975,
+              "total_change_bn": 0.025542927476739617,
+              "n_households": 3193953.5605680346
+            },
+            {
+              "group": 3,
+              "avg_change_per_household": 15.974804739975035,
+              "total_change_bn": 0.04602025710253092,
+              "n_households": 2880802.479379967
+            },
+            {
+              "group": 4,
+              "avg_change_per_household": 4.1269197538258835,
+              "total_change_bn": 0.0107442551386542,
+              "n_households": 2603456.2772134542
+            },
+            {
+              "group": 5,
+              "avg_change_per_household": 5.737458180792226,
+              "total_change_bn": 0.0169171857480024,
+              "n_households": 2948550.5976562053
+            },
+            {
+              "group": 6,
+              "avg_change_per_household": 7.27785468826617,
+              "total_change_bn": 0.021832146594211056,
+              "n_households": 2999805.235107299
+            },
+            {
+              "group": 7,
+              "avg_change_per_household": 8.838519203031119,
+              "total_change_bn": 0.025029075348427354,
+              "n_households": 2831817.7257389203
+            },
+            {
+              "group": 8,
+              "avg_change_per_household": 30.531834357746085,
+              "total_change_bn": 0.08407155275979239,
+              "n_households": 2753570.3153211623
+            },
+            {
+              "group": 9,
+              "avg_change_per_household": 15.914288835615618,
+              "total_change_bn": 0.048989797030615574,
+              "n_households": 3078352.890075624
+            },
+            {
+              "group": 10,
+              "avg_change_per_household": 24.831353510682952,
+              "total_change_bn": 0.08081428517262626,
+              "n_households": 3254525.9821563214
+            }
+          ],
+          "quintiles": [
+            {
+              "group": 1,
+              "avg_change_per_household": 5.494072866829828,
+              "total_change_bn": 0.03422116726643556,
+              "n_households": 6228742.882724404
+            },
+            {
+              "group": 2,
+              "avg_change_per_household": 10.35044383581287,
+              "total_change_bn": 0.05676451224118513,
+              "n_households": 5484258.756593421
+            },
+            {
+              "group": 3,
+              "avg_change_per_household": 6.51429292928012,
+              "total_change_bn": 0.03874933234221345,
+              "n_households": 5948355.832763504
+            },
+            {
+              "group": 4,
+              "avg_change_per_household": 19.53322263487944,
+              "total_change_bn": 0.10910062810821974,
+              "n_households": 5585388.041060083
+            },
+            {
+              "group": 5,
+              "avg_change_per_household": 20.496852193462843,
+              "total_change_bn": 0.12980408220324183,
+              "n_households": 6332878.872231945
+            }
+          ],
+          "quartiles": [
+            {
+              "group": 1,
+              "avg_change_per_household": 5.951146006665634,
+              "total_change_bn": 0.045348606223161475,
+              "n_households": 7620146.804055616
+            },
+            {
+              "group": 2,
+              "avg_change_per_household": 8.883774642491375,
+              "total_change_bn": 0.06255425903246162,
+              "n_households": 7041405.4329184145
+            },
+            {
+              "group": 3,
+              "avg_change_per_household": 15.821904850755717,
+              "total_change_bn": 0.11334050111928919,
+              "n_households": 7163518.058565218
+            },
+            {
+              "group": 4,
+              "avg_change_per_household": 19.007715218546714,
+              "total_change_bn": 0.14739635578638344,
+              "n_households": 7754554.089834109
             }
           ]
         }
@@ -1711,28 +3191,53 @@
       {
         "scenario": "low",
         "demand_elasticity": -0.15,
-        "avg_cost_wedge_pct": 0.10901382386931803,
-        "employment_gain_pct": 0.016352073580397704,
-        "new_jobs": 4919.865117220772,
-        "static_cost_per_job": 242440.96019413153
+        "avg_cost_wedge_pct": 0.09558937634276667,
+        "employment_gain_pct": 0.014338406451414999,
+        "new_jobs": 3378.5118833699203,
+        "static_cost_per_job": 228938.3763527142
       },
       {
         "scenario": "central",
         "demand_elasticity": -0.31,
-        "avg_cost_wedge_pct": 0.10901382386931803,
-        "employment_gain_pct": 0.03379428539948859,
-        "new_jobs": 10167.721242256262,
-        "static_cost_per_job": 117310.14202941848
+        "avg_cost_wedge_pct": 0.09558937634276667,
+        "employment_gain_pct": 0.029632706666257665,
+        "new_jobs": 6982.2578922978355,
+        "static_cost_per_job": 110776.63371905526
       },
       {
         "scenario": "high",
         "demand_elasticity": -0.5,
-        "avg_cost_wedge_pct": 0.10901382386931803,
-        "employment_gain_pct": 0.054506911934659015,
-        "new_jobs": 16399.55039073591,
-        "static_cost_per_job": 72732.28805823944
+        "avg_cost_wedge_pct": 0.09558937634276667,
+        "employment_gain_pct": 0.04779468817138333,
+        "new_jobs": 11261.706277899735,
+        "static_cost_per_job": 68681.51290581426
+      }
+    ],
+    "employment_excl_public": [
+      {
+        "scenario": "low",
+        "demand_elasticity": -0.15,
+        "avg_cost_wedge_pct": 0.09504474339246138,
+        "employment_gain_pct": 0.014256711508869207,
+        "new_jobs": 3126.716608537412,
+        "static_cost_per_job": 228488.05258648758
+      },
+      {
+        "scenario": "central",
+        "demand_elasticity": -0.31,
+        "avg_cost_wedge_pct": 0.09504474339246138,
+        "employment_gain_pct": 0.02946387045166303,
+        "new_jobs": 6461.880990977319,
+        "static_cost_per_job": 110558.73512249398
+      },
+      {
+        "scenario": "high",
+        "demand_elasticity": -0.5,
+        "avg_cost_wedge_pct": 0.09504474339246138,
+        "employment_gain_pct": 0.04752237169623069,
+        "new_jobs": 10422.388695124708,
+        "static_cost_per_job": 68546.41577594627
       }
     ]
-  },
-  "person_calculator": null
+  }
 }

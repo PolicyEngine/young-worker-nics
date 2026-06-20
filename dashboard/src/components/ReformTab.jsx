@@ -22,7 +22,6 @@ import {
   formatPct,
 } from "../lib/formatters";
 import {
-  getCalculatorProfile,
   getEmploymentScenarios,
   getPassThroughScenarios,
   getStatic,
@@ -36,10 +35,7 @@ const AXIS_STYLE = { fontSize: 12, fill: colors.gray[500] };
 // pipeline and present in the JSON — flip to true to bring the section back.
 const SHOW_LABOUR_DEMAND = false;
 
-// The Household view exists only when the pipeline was run with
-// --include-calculator; the JSON carries person_calculator: null otherwise.
-const SUB_TABS = (hasCalculator) => [
-  ...(hasCalculator ? [{ id: "household", label: "Household" }] : []),
+const SUB_TABS = [
   { id: "static", label: "Population (static)" },
   { id: "behavioural", label: "Population (behavioural)" },
 ];
@@ -94,157 +90,6 @@ function NotComputedNote() {
   );
 }
 
-function HouseholdView({ data }) {
-  const ages = data.person_calculator.ages;
-  const [age, setAge] = useState(ages[Math.floor((ages.length - 1) / 2)]);
-  const [region, setRegion] = useState("ruk");
-  const [renter, setRenter] = useState(false);
-  const profile = getCalculatorProfile(data, age, region, renter);
-
-  const chartData = profile.employment_income.map((income, i) => ({
-    income,
-    saving: profile.employer_nics_saving[i],
-    netGain: profile.net_gain_full_passthrough[i],
-    net: profile.net[i],
-    benefits: profile.benefits[i],
-  }));
-
-  const switches = (
-    <div className="mb-4 space-y-2">
-      <SwitchRow label="Age">
-        {ages.map((a) => (
-          <button
-            key={a}
-            className={`selector-chip compact ${age === a ? "active" : ""}`}
-            onClick={() => setAge(a)}
-          >
-            {a}
-          </button>
-        ))}
-      </SwitchRow>
-      <SwitchRow label="Location">
-        {Object.keys(data.person_calculator.regions).map((r) => (
-          <button
-            key={r}
-            className={`selector-chip compact ${region === r ? "active" : ""}`}
-            onClick={() => setRegion(r)}
-          >
-            {r === "ruk" ? "Rest of UK" : "Scotland"}
-          </button>
-        ))}
-      </SwitchRow>
-      <SwitchRow label="Housing">
-        {[false, true].map((r) => (
-          <button
-            key={String(r)}
-            className={`selector-chip compact ${renter === r ? "active" : ""}`}
-            onClick={() => setRenter(r)}
-          >
-            {r ? "Private renter" : "Not renting"}
-          </button>
-        ))}
-      </SwitchRow>
-    </div>
-  );
-
-  return (
-    <>
-      <section className="section-card">
-        <SectionHeading
-          title="Exemption value for a single worker"
-          description={`Employer NICs saved on a ${age}-year-old employee by gross salary, and the worker's exact net gain if the saving were fully passed through as wages. With ${formatPct(data.settings.pass_through_scenarios[0] * 100, 0)} pass-through the worker line is flat at zero and the employer keeps the saving.`}
-        />
-        {switches}
-        <div className="h-[380px] w-full">
-          <ResponsiveContainer>
-            <LineChart data={chartData} margin={{ top: 10, right: 20, bottom: 5, left: 10 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={colors.border.light} />
-              <XAxis
-                dataKey="income"
-                tick={AXIS_STYLE}
-                tickFormatter={formatCurrency}
-                label={{ value: "Gross salary", position: "insideBottom", offset: -2, fontSize: 12 }}
-              />
-              <YAxis
-                tick={AXIS_STYLE}
-                tickFormatter={formatCurrency}
-                tickLine={false}
-                axisLine={false}
-              />
-              <Tooltip formatter={(v) => formatCurrency(v)} />
-              <Legend />
-              <Line
-                type="monotone"
-                dataKey="saving"
-                name="Employer NICs saved"
-                stroke={colors.primary[600]}
-                strokeWidth={2.5}
-                dot={false}
-              />
-              <Line
-                type="monotone"
-                dataKey="netGain"
-                name="Worker net gain (100% pass-through)"
-                stroke={colors.primary[700]}
-                strokeWidth={2}
-                strokeDasharray="6 4"
-                dot={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-        <ChartLogo />
-      </section>
-
-      <section className="section-card">
-        <SectionHeading
-          title="Baseline net income and benefits"
-          description="The worker's household net income by gross salary, with the benefits component shown separately (benefits are part of net income, not additional to it). These are the curves the switches above reshape: UC eligibility and housing element, Scottish income tax, minimum wage bands by age."
-        />
-        <div className="h-[380px] w-full">
-          <ResponsiveContainer>
-            <LineChart data={chartData} margin={{ top: 10, right: 20, bottom: 5, left: 10 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={colors.border.light} />
-              <XAxis
-                dataKey="income"
-                tick={AXIS_STYLE}
-                tickFormatter={formatCurrency}
-                label={{ value: "Gross salary", position: "insideBottom", offset: -2, fontSize: 12 }}
-              />
-              <YAxis
-                tick={AXIS_STYLE}
-                tickFormatter={formatCurrency}
-                tickLine={false}
-                axisLine={false}
-              />
-              <Tooltip formatter={(v) => formatCurrency(v)} />
-              <Legend />
-              <Line
-                type="monotone"
-                dataKey="net"
-                name="Household net income"
-                stroke={colors.primary[600]}
-                strokeWidth={2.5}
-                dot={false}
-              />
-              <Line
-                type="monotone"
-                dataKey="benefits"
-                name="Benefits (component of net income)"
-                stroke={colors.primary[700]}
-                strokeWidth={2}
-                strokeDasharray="6 4"
-                dot={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-        <ChartLogo />
-      </section>
-    </>
-  );
-}
-
 function TipHeader({ label, tip }) {
   return (
     <th>
@@ -264,12 +109,16 @@ function SourceLink({ href, children }) {
   );
 }
 
-function StaticView({ data, targeted }) {
+function StaticView({ data, targeted, excludePublic }) {
   const dimensions = DIMENSIONS;
   const [dimension, setDimension] = useState("by_income_quartile");
   // `targeted` mirrors the data.reform schema; the pipeline may omit some
   // breakdowns for the targeted population, so every access is null-guarded.
-  const staticResults = targeted ? (targeted.static ?? null) : getStatic(data);
+  // `excludePublic` swaps in the *_excl_public block (non-public employees
+  // only), which carries the same breakdown shape.
+  const staticResults = excludePublic
+    ? (targeted ? (targeted.static_excl_public ?? null) : (data.reform.static_excl_public ?? null))
+    : (targeted ? (targeted.static ?? null) : getStatic(data));
   const allRows = staticResults?.[dimension];
   // The targeted population has no under-21s (their relief is already law);
   // their age rows carry exactly zero weight, so drop empty groups.
@@ -285,6 +134,11 @@ function StaticView({ data, targeted }) {
   // Group splits spread the total thinly; one decimal would round the
   // smaller groups to £0.0bn.
   const breakdownMoney = (v) => `£${Number(v).toFixed(2)}bn`;
+  // Appended to the section copy when the public-sector employers are
+  // excluded, so the text matches the *_excl_public figures on screen.
+  const publicScopeNote = excludePublic
+    ? " Public-sector employers are excluded here: employer NICs on a public-sector job (NHS, state schools, councils, civil service, armed forces) are paid by government to government, so exempting them nets out of the consolidated public finances. The figures cover non-public employees only."
+    : "";
 
   return (
     <>
@@ -392,8 +246,8 @@ function StaticView({ data, targeted }) {
           title="Static fiscal cost"
           description={
             targeted
-              ? `Static means wages, employment and behaviour are held fixed: the cost is the employer NICs no longer charged in ${data.fiscal_year_label}, computed person by person on the PolicyEngine UK enhanced FRS, with each employed 21-24-year-old counted at their imputed probability of having been NEET within the past year. What happens when employers respond is in the Population (behavioural) view.`
-              : `Static means wages, employment and behaviour are held fixed: the cost is simply the employer NICs no longer charged in ${data.fiscal_year_label}, computed person by person on the PolicyEngine UK enhanced FRS. Under-21s are already exempt in law, so the marginal cost comes from employed 21-24-year-olds. What happens when employers respond is in the Population (behavioural) view.`
+              ? `Static means wages, employment and behaviour are held fixed: the cost is the employer NICs no longer charged in ${data.fiscal_year_label}, computed person by person in PolicyEngine UK, with each employed 21-24-year-old counted at their imputed probability of having been NEET within the past year. What happens when employers respond is in the Population (behavioural) view.${publicScopeNote}`
+              : `Static means wages, employment and behaviour are held fixed: the cost is simply the employer NICs no longer charged in ${data.fiscal_year_label}, computed person by person in PolicyEngine UK. Under-21s are already exempt in law, so the marginal cost comes from employed 21-24-year-olds. What happens when employers respond is in the Population (behavioural) view.${publicScopeNote}`
           }
         />
       </div>
@@ -475,32 +329,30 @@ function StaticView({ data, targeted }) {
               ) : (
                 "Labour Force Survey"
               )}{" "}
-              interviews each respondent five times over a year, so it records
-              who moved from NEET status (not in employment, education or
-              training) into work.
+              interviews each respondent five times over a year, capturing who
+              moved from NEET status (not in employment, education or training)
+              into work.
               {targeted.lfs_panels != null && targeted.entrant_share != null && (
                 <>
                   {" "}
-                  Pooling {targeted.lfs_panels.count} of these{" "}
+                  Pooling {targeted.lfs_panels.count}{" "}
                   {data.official_stats.lfs_5q_panels?.source ? (
                     <SourceLink href={data.official_stats.lfs_5q_panels.source}>
-                      panels
+                      five-quarter panels
                     </SourceLink>
                   ) : (
-                    "panels"
+                    "five-quarter panels"
                   )}{" "}
-                  ({targeted.lfs_panels.period}; {targeted.lfs_panels.studies})
-                  shows that{" "}
+                  ({targeted.lfs_panels.period}),{" "}
                   {formatPct(targeted.entrant_share * 100, 1)} of employed
                   21-24-year-olds were NEET at some point in the previous year.
                 </>
               )}{" "}
-              A quantile random forest trained on those panel members gives
-              every employed 21-24-year-old in the model their own probability
-              of being such a recent entrant, predicted from age, sex and
-              earnings and calibrated so the average matches the measured
-              share. Every figure above counts each employee at that
-              probability. Full detail is on the Methodology tab.
+              A quantile random forest trained on those members and calibrated
+              to that share gives every employed 21-24-year-old their own
+              probability of being such a recent entrant, from age, sex and
+              earnings. Every figure above counts each employee at that
+              probability; full detail is on the Methodology tab.
             </p>
           </details>
         )}
@@ -560,15 +412,25 @@ function StaticView({ data, targeted }) {
   );
 }
 
-function BehaviouralView({ data, targeted }) {
+function BehaviouralView({ data, targeted, excludePublic }) {
   // `targeted` mirrors the data.reform schema; the pipeline may omit some
   // result blocks for the targeted population, so every access is null-guarded.
+  // `excludePublic` swaps in the *_excl_public scenarios (non-public only).
   const passThrough =
-    (targeted ? targeted.pass_through : getPassThroughScenarios(data)) ?? [];
+    (excludePublic
+      ? (targeted ? targeted.pass_through_excl_public : data.reform.pass_through_excl_public)
+      : (targeted ? targeted.pass_through : getPassThroughScenarios(data))) ?? [];
   const employment =
-    (targeted ? targeted.employment : getEmploymentScenarios(data)) ?? [];
+    (excludePublic
+      ? (targeted ? targeted.employment_excl_public : data.reform.employment_excl_public)
+      : (targeted ? targeted.employment : getEmploymentScenarios(data))) ?? [];
   const obr = data.official_stats.obr;
   const evidence = data.official_stats.elasticity_evidence;
+  // Shown in the section copy when public-sector employers are excluded, so
+  // the text matches the *_excl_public scenarios on screen.
+  const publicScopeNote = excludePublic
+    ? " Public-sector employers are excluded here: their employer NICs are paid by government to government, so exempting them nets out of the consolidated public finances; these scenarios cover non-public employees only."
+    : "";
   const defaultScenario =
     passThrough.find(
       (s) => s.pass_through_rate === obr.medium_term_pass_through
@@ -646,6 +508,7 @@ function BehaviouralView({ data, targeted }) {
               </SourceLink>{" "}
               (Saez, Schoefer &amp; Seim 2019) supports the lower{" "}
               {formatPct(data.settings.pass_through_scenarios[1] * 100, 0)}.
+              {publicScopeNote}
             </>
           }
         />
@@ -732,7 +595,7 @@ function BehaviouralView({ data, targeted }) {
       <section className="section-card">
         <SectionHeading
           title="Composition of the fiscal offset"
-          description={`Decomposition of the fiscal offset under the selected ${formatPct(scenario.pass_through_rate * 100, 0)} pass-through scenario. With zero pass-through no saving reaches workers' pay, so there is no offset, poverty or distributional effect to show; those results exist only for the scenarios with positive pass-through.`}
+          description={`Decomposition of the fiscal offset under the selected ${formatPct(scenario.pass_through_rate * 100, 0)} pass-through scenario. With zero pass-through no saving reaches workers' pay, so there is no offset or distributional effect to show; those results exist only for the scenarios with positive pass-through.`}
         />
         {scenario.pass_through_rate > 0 &&
           (scenario.offset_components_bn == null ? (
@@ -788,42 +651,6 @@ function BehaviouralView({ data, targeted }) {
           </>
           ))}
       </section>
-
-      {scenario.pass_through_rate > 0 && (
-        <section className="section-card">
-          <SectionHeading
-            title="Poverty impact"
-            description={`Absolute poverty before housing costs in ${data.fiscal_year_label} under the ${formatPct(scenario.pass_through_rate * 100, 0)} pass-through scenario, baseline versus reform. Poverty is measured on household income, so people who share a household with a young worker whose pay rises can move out of poverty too.`}
-          />
-          {targeted ? (
-            <p className="text-sm text-slate-500">
-              Not reported for the targeted population. Poverty is a threshold
-              measure: it requires each entrant&apos;s actual wage gain, whereas
-              the targeted simulation spreads the boost in small per-person
-              probability shares across all employees, which cannot move
-              households across the poverty line.
-            </p>
-          ) : scenario.poverty == null ? (
-            <NotComputedNote />
-          ) : (
-          <div className="grid gap-4 md:grid-cols-3">
-            <MetricCard
-              label="Poverty rate change, all people (absolute, before housing costs)"
-              value={`${((scenario.poverty.reformed_rate_bhc - scenario.poverty.baseline_rate_bhc) * 100).toFixed(2)}pp`}
-            />
-            <MetricCard
-              label="Poverty rate change, 18-24 (absolute, before housing costs)"
-              value={`${((scenario.poverty.reformed_rate_bhc_18_24 - scenario.poverty.baseline_rate_bhc_18_24) * 100).toFixed(2)}pp`}
-            />
-            <MetricCard
-              label="People lifted out of poverty"
-              value={formatCount(scenario.poverty.people_lifted)}
-              note={`${formatCount(scenario.poverty.people_lifted_18_24)} are themselves aged 18-24; the rest share a household with a young worker whose pay rises.`}
-            />
-          </div>
-          )}
-        </section>
-      )}
 
       {scenario.pass_through_rate > 0 && (
         <section className="section-card">
@@ -1046,57 +873,97 @@ const POPULATIONS = [
   { id: "neet", label: "Recent NEETs only" },
 ];
 
+const EMPLOYERS = [
+  { id: "all", label: "All employers" },
+  { id: "exclude_public", label: "Exclude public-sector employers" },
+];
+
+function ToggleGroupLabel({ children }) {
+  return (
+    <span className="w-32 shrink-0 text-xs font-semibold uppercase tracking-wide text-slate-500">
+      {children}
+    </span>
+  );
+}
+
 export default function ReformTab({ data }) {
-  const hasCalculator = data.person_calculator !== null;
   const targeted = data.targeted ?? null;
-  const [subTab, setSubTab] = useState(hasCalculator ? "household" : "static");
-  const [population, setPopulation] = useState(targeted !== null ? "neet" : "all");
-  // Population views only; the Household calculator is per-person.
+  // The employer-sector split exists only when the build ran on a dataset
+  // with the employment_sector variable.
+  const hasPublicSplit = (data.reform.static_excl_public ?? null) !== null;
+  const [subTab, setSubTab] = useState("static");
+  const [population, setPopulation] = useState("all");
+  const [employer, setEmployer] = useState("all");
   const populationView = subTab === "static" || subTab === "behavioural";
   const useTargeted = targeted !== null && population === "neet";
   const activeTargeted = useTargeted ? targeted : null;
+  const excludePublic = hasPublicSplit && employer === "exclude_public";
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap gap-2">
-        {SUB_TABS(hasCalculator).map((tab) => (
-          <button
-            key={tab.id}
-            className={`toggle-button ${subTab === tab.id ? "active" : ""}`}
-            onClick={() => setSubTab(tab.id)}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {targeted !== null && populationView && (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <ToggleGroupLabel>Analysis view</ToggleGroupLabel>
         <div className="flex flex-wrap items-center gap-2">
-          {POPULATIONS.map((p) => (
+          {SUB_TABS.map((tab) => (
             <button
-              key={p.id}
-              className={`toggle-button ${population === p.id ? "active" : ""}`}
-              onClick={() => setPopulation(p.id)}
+              key={tab.id}
+              className={`toggle-button ${subTab === tab.id ? "active" : ""}`}
+              onClick={() => setSubTab(tab.id)}
             >
-              {p.label}
+              {tab.label}
             </button>
           ))}
         </div>
+      </div>
+
+      {targeted !== null && populationView && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <ToggleGroupLabel>Eligible workers</ToggleGroupLabel>
+          <div className="flex flex-wrap items-center gap-2">
+            {POPULATIONS.map((p) => (
+              <button
+                key={p.id}
+                className={`toggle-button ${population === p.id ? "active" : ""}`}
+                onClick={() => setPopulation(p.id)}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
 
-      {subTab === "household" && <HouseholdView data={data} />}
+      {hasPublicSplit && populationView && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <ToggleGroupLabel>Employer scope</ToggleGroupLabel>
+          <div className="flex flex-wrap items-center gap-2">
+            {EMPLOYERS.map((e) => (
+              <button
+                key={e.id}
+                className={`toggle-button ${employer === e.id ? "active" : ""}`}
+                onClick={() => setEmployer(e.id)}
+              >
+                {e.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {subTab === "static" && (
         <StaticView
-          key={useTargeted ? "targeted" : "all"}
+          key={`${useTargeted ? "targeted" : "all"}-${excludePublic ? "excl" : "all"}`}
           data={data}
           targeted={activeTargeted}
+          excludePublic={excludePublic}
         />
       )}
       {subTab === "behavioural" && (
         <BehaviouralView
-          key={useTargeted ? "targeted" : "all"}
+          key={`${useTargeted ? "targeted" : "all"}-${excludePublic ? "excl" : "all"}`}
           data={data}
           targeted={activeTargeted}
+          excludePublic={excludePublic}
         />
       )}
     </div>

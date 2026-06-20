@@ -7,8 +7,10 @@ import SectionHeading from "./SectionHeading";
 const METHOD_LABELS = {
   static: "Static cost",
   pass_through: "Wage pass-through and fiscal offsets",
-  poverty: "Poverty impact",
+  // poverty: hidden with the poverty-impact section removed from the reform
+  // tab; restore the label here if that section returns.
   distributional: "Distributional impact",
+  public_sector_exclusion: "Excluding public-sector employers",
   // employment: hidden with the labour demand response section; restore the
   // label here when that section returns to the reform tab.
   // reform_object: hidden — internal build-time cross-check, not a result.
@@ -52,7 +54,7 @@ export default function MethodologyTab({ data }) {
       <section className="section-card">
         <SectionHeading
           title="Computation methods"
-          description="Static microsimulation on the PolicyEngine UK enhanced Family Resources Survey, with scenario-based behavioural layers. Statutory parameters are read from the PolicyEngine parameter tree, never hard-coded. Each note below is written by the analysis pipeline alongside the result it describes."
+          description="Static microsimulation in PolicyEngine UK, with scenario-based behavioural layers. Statutory parameters are read from the PolicyEngine parameter tree, never hard-coded. Each note below is written by the analysis pipeline alongside the result it describes."
         />
         <div className="grid gap-x-8 gap-y-5 md:grid-cols-2">
           {Object.entries(data.methods)
@@ -109,8 +111,8 @@ export default function MethodologyTab({ data }) {
             </a>{" "}
             interactions: small employers with secondary NICs below{" "}
             {formatCurrency(employmentAllowance.value)} already pay nothing on
-            these workers, so the static cost is overstated (the FRS has no
-            employer-side data).
+            these workers, so the static cost is overstated (the survey
+            microdata has no employer-side data).
           </li>
           <li>
             General-equilibrium and substitution effects (e.g. hiring shifted
@@ -123,7 +125,8 @@ export default function MethodologyTab({ data }) {
           </li>
           <li>
             Apprentices under 25 are already exempt in law (category H) but
-            invisible in the FRS, so no adjustment is made for them.
+            invisible in the survey microdata, so no adjustment is made for
+            them.
           </li>
           <li>Public-sector recycling of the cost within government.</li>
           <li>Single-year-of-age detail: {data.age_band_note}</li>

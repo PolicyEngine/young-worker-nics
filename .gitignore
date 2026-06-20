@@ -8,3 +8,7 @@ node_modules/
 .next/
 .vercel/
 .vercel
+
+# Licensed UKDS LFS microdata — never commit (public repo)
+data/lfs/
+*.tab

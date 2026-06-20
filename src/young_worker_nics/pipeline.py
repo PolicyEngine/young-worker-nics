@@ -22,6 +22,7 @@ verbatim into the results JSON so the dashboard renders no hardcoded numbers.
 from __future__ import annotations
 
 import argparse
+import gc
 import importlib.metadata
 import json
 from pathlib import Path
@@ -30,7 +31,6 @@ import numpy as np
 from microdf import MicroSeries
 
 from . import sources
-from .calculator import build_person_calculator_lookup
 from .formulas import employment_cost_reduction_pct, exempt_employer_nics
 from .impacts import avg_change_by_group, inequality_impact, poverty_impact
 from .reform import YOUNG_WORKER_EXEMPTION
@@ -38,7 +38,6 @@ from .sources import (
     MARGINAL_AGE_LOWER,
     REFORM_AGE_LOWER,
     REFORM_AGE_UPPER,
-    WEEKS_PER_YEAR,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -177,6 +176,11 @@ def _run_pass_through_scenarios(
                 "avg_change_by_group": avg_change_by_group(baseline, reformed, year),
             }
         )
+        # Release this scenario's full simulation before the next is built;
+        # otherwise the next factory() call peaks at baseline + two reform
+        # sims (~7.5 GB on the 1.16M-person Populace dataset → OOM).
+        del reformed
+        gc.collect()
     return scenarios
 
 
@@ -208,28 +212,139 @@ def _employment_scenario_rows(
     return rows
 
 
+class _FrozenBaseline:
+    """A lightweight stand-in for the baseline Microsimulation that serves a
+    fixed set of pre-computed MicroSeries from a cache.
+
+    The pass-through / distributional impacts only read a handful of baseline
+    variables (poverty, equivalised net income, household net income). On the
+    1.16M-person Populace dataset, keeping the full baseline simulation live
+    alongside each freshly-built reform simulation peaks at ~5.5 GB and is
+    OOM-killed on an 8 GB machine. Snapshotting those few arrays and dropping
+    the real baseline caps the pass-through loop at one live simulation
+    (~3 GB). Results are byte-identical: the cached series are exactly what
+    ``baseline.calculate`` would have returned (person order and weights are
+    preserved).
+    """
+
+    def __init__(self, cache: dict, frame_cache: dict | None = None):
+        self._cache = cache
+        self._frame_cache = frame_cache or {}
+
+    def calculate(self, variable: str, year=None, map_to=None):
+        try:
+            return self._cache[(variable, map_to)]
+        except KeyError as exc:  # pragma: no cover - guards a coding mistake
+            raise KeyError(
+                f"_FrozenBaseline has no cached '{variable}' (map_to={map_to}); "
+                "add it to the snapshot in run() before dropping the baseline."
+            ) from exc
+
+    def calculate_dataframe(self, variables, year=None):
+        key = tuple(variables)
+        try:
+            return self._frame_cache[key].copy()
+        except KeyError as exc:  # pragma: no cover - guards a coding mistake
+            raise KeyError(
+                f"_FrozenBaseline has no cached dataframe for {key}; add it to "
+                "the snapshot in run() before dropping the baseline."
+            ) from exc
+
+
+def _freeze_baseline(baseline, year: int) -> _FrozenBaseline:
+    """Snapshot the baseline variables the impact functions consume."""
+    return _FrozenBaseline(
+        {
+            ("in_poverty_bhc", "person"): baseline.calculate(
+                "in_poverty_bhc", year, map_to="person"
+            ),
+            ("in_deep_poverty_bhc", "person"): baseline.calculate(
+                "in_deep_poverty_bhc", year, map_to="person"
+            ),
+            ("equiv_hbai_household_net_income", "person"): baseline.calculate(
+                "equiv_hbai_household_net_income", year, map_to="person"
+            ),
+            ("equiv_hbai_household_net_income", None): baseline.calculate(
+                "equiv_hbai_household_net_income", year
+            ),
+            ("household_net_income", None): baseline.calculate("household_net_income", year),
+        },
+        frame_cache={
+            # neet.py builds the recent-NEET imputation receiver frame from
+            # these three columns (only used when --lfs-path is given).
+            ("age", "gender", "employment_income"): baseline.calculate_dataframe(
+                ["age", "gender", "employment_income"], year
+            ),
+        },
+    )
+
+
 def run(args: argparse.Namespace) -> None:
     """Run the pipeline end-to-end and write the dashboard JSON."""
     # ── Step 1: Load PolicyEngine baseline ──────────────────────────────────
 
-    print("Step 1: Loading PolicyEngine baseline from the policyengine.py bundle ...")
-    from policyengine.tax_benefit_models.uk import managed_microsimulation
+    print("Step 1: Loading PolicyEngine baseline ...")
+    populace_source = None  # logical dataset name recorded in the results JSON
+    if getattr(args, "populace", False):
+        # Populace UK dataset, simulated THROUGH the policyengine.py wrapper.
+        # policyengine.py registers the Populace UK release as a managed
+        # dataset (logical name "populace_uk_<year>"), so we hand that name
+        # straight to managed_microsimulation, which materialises it from the
+        # bundle/HF cache. The wrapper returns a real
+        # policyengine_uk.Microsimulation, so .calculate / .set_input /
+        # .tax_benefit_system.parameters and the employment_sector variable
+        # all work unchanged.
+        from policyengine.tax_benefit_models.uk import managed_microsimulation
 
-    baseline = managed_microsimulation()
+        populace_year = getattr(args, "populace_year", 2023)
+        populace_source = f"populace_uk_{populace_year}"
+        print(
+            f"    Populace UK {populace_year} via policyengine.py "
+            f"(managed dataset {populace_source!r})"
+        )
+
+        def make_sim(reform=None):
+            if reform is None:
+                return managed_microsimulation(dataset=populace_source)
+            return managed_microsimulation(dataset=populace_source, reform=reform)
+    elif args.dataset:
+        # Direct policyengine-uk simulation on a specified enhanced FRS. Used
+        # to access employment_sector (the bundle still pins an older pe-uk).
+        from policyengine_uk import Microsimulation
+
+        print(f"    simulating directly on {args.dataset} (policyengine-uk)")
+
+        def make_sim(reform=None):
+            if reform is None:
+                return Microsimulation(dataset=args.dataset)
+            return Microsimulation(dataset=args.dataset, reform=reform)
+    else:
+        from policyengine.tax_benefit_models.uk import managed_microsimulation
+
+        def make_sim(reform=None):
+            if reform is None:
+                return managed_microsimulation()
+            return managed_microsimulation(reform=reform)
+
+    baseline = make_sim()
     YEAR = args.year
 
     # ── Step 2: Statutory parameters from the PolicyEngine parameter tree ───
 
     print("Step 2: Reading statutory NICs parameters...")
+    # Weeks-per-year comes from PolicyEngine (model constant), never hardcoded:
+    # PolicyEngine stores the NICs thresholds per week.
+    from policyengine_uk.model_api import WEEKS_IN_YEAR
+
     _class_1 = baseline.tax_benefit_system.parameters(
         f"{YEAR}-01-01"
     ).gov.hmrc.national_insurance.class_1
     EMPLOYER_RATE = float(_class_1.rates.employer)
-    SECONDARY_THRESHOLD = float(_class_1.thresholds.secondary_threshold) * WEEKS_PER_YEAR
+    SECONDARY_THRESHOLD = float(_class_1.thresholds.secondary_threshold) * WEEKS_IN_YEAR
     # The under-21 / apprentice Upper Secondary Thresholds are aligned with
     # the Upper Earnings Limit; PolicyEngine does not model the USTs
     # separately, so we read the UEL.
-    UPPER_SECONDARY_THRESHOLD = float(_class_1.thresholds.upper_earnings_limit) * WEEKS_PER_YEAR
+    UPPER_SECONDARY_THRESHOLD = float(_class_1.thresholds.upper_earnings_limit) * WEEKS_IN_YEAR
     print(
         f"    employer rate {EMPLOYER_RATE:.1%}, ST £{SECONDARY_THRESHOLD:,.0f}, "
         f"UST £{UPPER_SECONDARY_THRESHOLD:,.0f}"
@@ -285,28 +400,34 @@ def run(args: argparse.Namespace) -> None:
     # PolicyEngine Reform object must reproduce the threshold arithmetic to
     # within 0.1%, or the build fails. Baseline boolean masks index the
     # reformed MicroSeries positionally (.values): person order is identical
-    # across managed simulations.
-    print("    cross-checking against a PolicyEngine Reform-object simulation...")
-    reform_sim = managed_microsimulation(reform=YOUNG_WORKER_EXEMPTION)
-    reform_ni_employer = reform_sim.calculate("ni_employer", YEAR)
-    reform_cost_marginal = float(ni_employer[marginal_mask].sum()) - float(
-        reform_ni_employer[marginal_mask.values].sum()
-    )
-    reform_cost_headline = float(ni_employer[headline_mask].sum()) - float(
-        reform_ni_employer[headline_mask.values].sum()
-    )
-    for label, formula_cost, reform_cost in [
-        ("marginal 21-24", static_cost_marginal, reform_cost_marginal),
-        ("headline 18-24", static_cost_headline, reform_cost_headline),
-    ]:
-        relative_error = abs(reform_cost - formula_cost) / abs(formula_cost)
-        if relative_error > 1e-3:
-            raise RuntimeError(
-                f"Reform-object static cost diverges from threshold arithmetic ({label}): "
-                f"£{reform_cost / 1e9:.4f}bn vs £{formula_cost / 1e9:.4f}bn "
-                f"({relative_error:.3%} > 0.1% tolerance)."
-            )
-        print(f"    {label}: £{formula_cost / 1e9:.3f}bn — reform-object run matches.")
+    # across managed simulations. This builds a second full Microsimulation
+    # purely to validate (it is not dashboard output), so on the memory-bound
+    # --populace path (1.16M-person dataset) it is skipped.
+    if getattr(args, "populace", False):
+        print("    skipping Reform-object cross-check on --populace (memory; not dashboard output)")
+    else:
+        print("    cross-checking against a PolicyEngine Reform-object simulation...")
+        reform_sim = make_sim(reform=YOUNG_WORKER_EXEMPTION)
+        reform_ni_employer = reform_sim.calculate("ni_employer", YEAR)
+        reform_cost_marginal = float(ni_employer[marginal_mask].sum()) - float(
+            reform_ni_employer[marginal_mask.values].sum()
+        )
+        reform_cost_headline = float(ni_employer[headline_mask].sum()) - float(
+            reform_ni_employer[headline_mask.values].sum()
+        )
+        for label, formula_cost, reform_cost in [
+            ("marginal 21-24", static_cost_marginal, reform_cost_marginal),
+            ("headline 18-24", static_cost_headline, reform_cost_headline),
+        ]:
+            relative_error = abs(reform_cost - formula_cost) / abs(formula_cost)
+            if relative_error > 1e-3:
+                raise RuntimeError(
+                    f"Reform-object static cost diverges from threshold arithmetic ({label}): "
+                    f"£{reform_cost / 1e9:.4f}bn vs £{formula_cost / 1e9:.4f}bn "
+                    f"({relative_error:.3%} > 0.1% tolerance)."
+                )
+            print(f"    {label}: £{formula_cost / 1e9:.3f}bn — reform-object run matches.")
+        del reform_sim, reform_ni_employer
 
     print(f"    21-24 (marginal) static cost: £{static_cost_marginal / 1e9:.2f}bn")
     print(f"    18-24 headline quantum (incl. already-exempt): £{static_cost_headline / 1e9:.2f}bn")
@@ -372,6 +493,92 @@ def run(args: argparse.Namespace) -> None:
 
     static_cost_18_20 = float(saving_per_person[headline_mask & (age < MARGINAL_AGE_LOWER)].sum())
 
+    # ── Step 5c: Public / private employer split ────────────────────────────
+    # Employer NICs forgone on a PUBLIC-sector employee is government paying
+    # government (the department's NICs are the Exchequer's receipt), so it
+    # nets out of the consolidated public finances. The dashboard's "exclude
+    # public-sector employers" toggle reads the *_excl_public figures, which
+    # restrict every treated quantity to non-public employees. Needs the
+    # employment_sector variable (only available on the --dataset path).
+    is_public = None
+    if args.dataset is not None or getattr(args, "populace", False):
+        try:
+            is_public = baseline.calculate("employment_sector", YEAR) == "PUBLIC"
+        except Exception as exc:  # variable absent in an older dataset
+            print(f"    employment_sector unavailable ({exc}); public split skipped.")
+            is_public = None
+
+    excl_static = None
+    public_split = None
+    hm_excl = mm_excl = None
+    n_marginal_excl = static_cost_marginal_excl = None
+    if is_public is not None:
+        print("Step 5c: Public / private employer split...")
+        hm_excl = headline_mask & ~is_public
+        mm_excl = marginal_mask & ~is_public
+        n_marginal_excl = float(mm_excl.sum())
+        static_cost_marginal_excl = float(saving_per_person[mm_excl].sum())
+        static_cost_headline_excl = float(saving_per_person[hm_excl].sum())
+        n_public_marginal = float((marginal_mask & is_public).sum())
+        public_cost_marginal = float(saving_per_person[marginal_mask & is_public].sum())
+        public_split = {
+            "n_public_employees": n_public_marginal,
+            "public_share_of_employees": n_public_marginal / n_marginal,
+            "public_cost_bn": public_cost_marginal / 1e9,
+            "public_share_of_cost": public_cost_marginal / static_cost_marginal,
+        }
+        print(
+            f"    public-sector 21-24 employees: {n_public_marginal / 1e6:.3f}m "
+            f"({n_public_marginal / n_marginal:.1%}); their forgone NICs "
+            f"£{public_cost_marginal / 1e9:.2f}bn excluded as gov-pays-gov."
+        )
+        excl_static = {
+            "marginal_cost_bn": static_cost_marginal_excl / 1e9,
+            "headline_quantum_bn": static_cost_headline_excl / 1e9,
+            "n_marginal_employees": n_marginal_excl,
+            "avg_saving_per_employee": (
+                static_cost_marginal_excl / n_marginal_excl if n_marginal_excl > 0 else 0.0
+            ),
+            "by_age_band": [
+                breakdown_row(label, hm_excl & (age >= lo) & (age <= hi))
+                for label, lo, hi in AGE_BANDS
+            ],
+            "by_age": [
+                breakdown_row(a, hm_excl & (age == a))
+                for a in range(REFORM_AGE_LOWER, REFORM_AGE_UPPER + 1)
+            ],
+            "by_gender": [
+                breakdown_row(level.replace("_", " ").title(), hm_excl & (gender == level))
+                for level in sorted(set(gender[headline_mask]))
+            ],
+            "by_country": sorted(
+                (
+                    breakdown_row(level.replace("_", " ").title(), hm_excl & (country == level))
+                    for level in set(country[headline_mask])
+                ),
+                key=lambda r: r["static_cost_bn"],
+                reverse=True,
+            ),
+            "by_region": sorted(
+                (
+                    breakdown_row(_region_label(level), hm_excl & (region == level))
+                    for level in set(region[headline_mask])
+                ),
+                key=lambda r: r["static_cost_bn"],
+                reverse=True,
+            ),
+            "by_income_decile": [
+                breakdown_row(d, hm_excl & (income_decile == d)) for d in range(1, 11)
+            ],
+            "by_income_quintile": [
+                breakdown_row(q, hm_excl & (income_decile >= 2 * q - 1) & (income_decile <= 2 * q))
+                for q in range(1, 6)
+            ],
+            "by_income_quartile": [
+                breakdown_row(q, hm_excl & (quartile_index == q)) for q in range(1, 5)
+            ],
+        }
+
     # ── Step 5b: Population reconciliation ──────────────────────────────────
     # Every 16-24-year-old is in education, in work, or in neither (NEET).
     # The model's "NEET proxy" (not in education and no employment income)
@@ -421,12 +628,24 @@ def run(args: argparse.Namespace) -> None:
         "household_benefits": float(baseline.calculate("household_benefits", YEAR).sum()),
     }
 
+    # On --populace the dataset is large enough that holding the full baseline
+    # simulation live alongside each reform simulation OOMs an 8 GB machine.
+    # Snapshot the few baseline series the impacts need and drop the real
+    # baseline so the pass-through loop holds only one live simulation. (The
+    # remaining back-half work — labour-demand arithmetic and JSON assembly —
+    # needs no further baseline.calculate, and without --lfs-path the targeted
+    # branches that would are skipped.)
+    if getattr(args, "populace", False):
+        baseline = _freeze_baseline(baseline, YEAR)
+        gc.collect()
+        print("    baseline frozen to a snapshot; full simulation released (memory)")
+
     pass_through_scenarios = _run_pass_through_scenarios(
         rates=args.pass_through,
         boost_unit_values=np.where(marginal_mask.values, saving_per_person.values, 0.0),
         gross_cost=static_cost_marginal,
         n_employees=n_marginal,
-        simulation_factory=managed_microsimulation,
+        simulation_factory=make_sim,
         baseline=baseline,
         year=YEAR,
         age=age,
@@ -434,6 +653,25 @@ def run(args: argparse.Namespace) -> None:
         baseline_totals=baseline_totals,
         population_desc="all employed 21-24s",
     )
+
+    # Excluding public-sector employers: identical machinery, treated set
+    # restricted to non-public employees (private + sector-unknown).
+    pass_through_excl_public = None
+    if is_public is not None:
+        print("Step 6b: Pass-through scenarios excluding public-sector employers...")
+        pass_through_excl_public = _run_pass_through_scenarios(
+            rates=args.pass_through,
+            boost_unit_values=np.where(mm_excl.values, saving_per_person.values, 0.0),
+            gross_cost=static_cost_marginal_excl,
+            n_employees=n_marginal_excl,
+            simulation_factory=make_sim,
+            baseline=baseline,
+            year=YEAR,
+            age=age,
+            employment_income_values=employment_income_values,
+            baseline_totals=baseline_totals,
+            population_desc="private-sector 21-24s",
+        )
 
     # ── Step 7: Labour demand (employment) response ────────────────────────
     # %Δ employment of treated 21-24s ≈ elasticity × %Δ employment cost.
@@ -457,6 +695,20 @@ def run(args: argparse.Namespace) -> None:
     employment_scenarios = _employment_scenario_rows(
         elasticity_scenarios, avg_wedge, n_marginal, static_cost_marginal
     )
+
+    employment_excl_public = None
+    if is_public is not None:
+        wedge_mask_excl = mm_excl & (ni_class_1_income > 0)
+        cost_wedge_excl = employment_cost_reduction_pct(
+            ni_class_1_income[wedge_mask_excl],
+            SECONDARY_THRESHOLD,
+            UPPER_SECONDARY_THRESHOLD,
+            EMPLOYER_RATE,
+        )
+        avg_wedge_excl = float(cost_wedge_excl.mean())
+        employment_excl_public = _employment_scenario_rows(
+            elasticity_scenarios, avg_wedge_excl, n_marginal_excl, static_cost_marginal_excl
+        )
 
     # ── Step 8: Targeted population (opt-in: --lfs-path) ───────────────────
     # Second version of the reform results restricted to employed
@@ -568,7 +820,7 @@ def run(args: argparse.Namespace) -> None:
             boost_unit_values=np.where(treated_values, saving_values * prob, 0.0),
             gross_cost=targeted_cost,
             n_employees=n_targeted,
-            simulation_factory=managed_microsimulation,
+            simulation_factory=make_sim,
             baseline=baseline,
             year=YEAR,
             age=age,
@@ -595,11 +847,113 @@ def run(args: argparse.Namespace) -> None:
             elasticity_scenarios, targeted_avg_wedge, n_targeted, targeted_cost
         )
 
+        # Targeted population excluding public-sector employers.
+        targeted_excl_static = None
+        targeted_pass_through_excl_public = None
+        targeted_employment_excl_public = None
+        targeted_public_split = None
+        if is_public is not None:
+            print("    targeted: excluding public-sector employers...")
+            targeted_cost_excl = float(targeted_saving[mm_excl].sum())
+            n_targeted_excl = float(prob_count[mm_excl].sum())
+            t_public_cost = float(targeted_saving[marginal_mask & is_public].sum())
+            t_public_n = float(prob_count[marginal_mask & is_public].sum())
+            targeted_public_split = {
+                "n_public_employees": t_public_n,
+                "public_share_of_employees": t_public_n / n_targeted if n_targeted > 0 else 0.0,
+                "public_cost_bn": t_public_cost / 1e9,
+                "public_share_of_cost": t_public_cost / targeted_cost if targeted_cost > 0 else 0.0,
+            }
+            targeted_excl_static = {
+                "marginal_cost_bn": targeted_cost_excl / 1e9,
+                "n_marginal_employees": n_targeted_excl,
+                "avg_saving_per_employee": (
+                    targeted_cost_excl / n_targeted_excl if n_targeted_excl > 0 else 0.0
+                ),
+                "by_age_band": [
+                    targeted_breakdown_row(label, hm_excl & (age >= lo) & (age <= hi))
+                    for label, lo, hi in AGE_BANDS
+                ],
+                "by_age": [
+                    targeted_breakdown_row(a, hm_excl & (age == a))
+                    for a in range(REFORM_AGE_LOWER, REFORM_AGE_UPPER + 1)
+                ],
+                "by_gender": [
+                    targeted_breakdown_row(
+                        level.replace("_", " ").title(), hm_excl & (gender == level)
+                    )
+                    for level in sorted(set(gender[headline_mask]))
+                ],
+                "by_country": sorted(
+                    (
+                        targeted_breakdown_row(
+                            level.replace("_", " ").title(), hm_excl & (country == level)
+                        )
+                        for level in set(country[headline_mask])
+                    ),
+                    key=lambda r: r["static_cost_bn"],
+                    reverse=True,
+                ),
+                "by_region": sorted(
+                    (
+                        targeted_breakdown_row(_region_label(level), hm_excl & (region == level))
+                        for level in set(region[headline_mask])
+                    ),
+                    key=lambda r: r["static_cost_bn"],
+                    reverse=True,
+                ),
+                "by_income_decile": [
+                    targeted_breakdown_row(d, hm_excl & (income_decile == d)) for d in range(1, 11)
+                ],
+                "by_income_quintile": [
+                    targeted_breakdown_row(
+                        q, hm_excl & (income_decile >= 2 * q - 1) & (income_decile <= 2 * q)
+                    )
+                    for q in range(1, 6)
+                ],
+                "by_income_quartile": [
+                    targeted_breakdown_row(q, hm_excl & (quartile_index == q)) for q in range(1, 5)
+                ],
+            }
+            if targeted_cost_excl > 0:
+                targeted_pass_through_excl_public = _run_pass_through_scenarios(
+                    rates=args.pass_through,
+                    boost_unit_values=np.where(
+                        treated_values & ~np.asarray(is_public.values, dtype=bool),
+                        saving_values * prob,
+                        0.0,
+                    ),
+                    gross_cost=targeted_cost_excl,
+                    n_employees=n_targeted_excl,
+                    simulation_factory=make_sim,
+                    baseline=baseline,
+                    year=YEAR,
+                    age=age,
+                    employment_income_values=employment_income_values,
+                    baseline_totals=baseline_totals,
+                    population_desc="targeted private-sector 21-24s",
+                )
+                wedge_mask_excl_values = np.asarray(wedge_mask_excl.values, dtype=bool)
+                tww_excl = (person_weights * prob)[wedge_mask_excl_values]
+                if tww_excl.sum() > 0:
+                    t_avg_wedge_excl = float(
+                        MicroSeries(
+                            np.asarray(cost_wedge_excl.values, dtype=float), weights=tww_excl
+                        ).mean()
+                    )
+                    targeted_employment_excl_public = _employment_scenario_rows(
+                        elasticity_scenarios,
+                        t_avg_wedge_excl,
+                        n_targeted_excl,
+                        targeted_cost_excl,
+                    )
+
         targeted = {
             "population_label": POPULATION_LABEL_TARGETED,
             "entrant_share": float(imputation.entrant_share),
             "lfs_panels": imputation.panel_summary,
             "sensitivity_banded_cost_bn": banded_cost / 1e9,
+            "public_split": targeted_public_split,
             "static": {
                 "marginal_cost_bn": targeted_cost / 1e9,
                 "n_marginal_employees": n_targeted,
@@ -613,34 +967,19 @@ def run(args: argparse.Namespace) -> None:
                 "by_income_quintile": targeted_by_income_quintile,
                 "by_income_quartile": targeted_by_income_quartile,
             },
+            "static_excl_public": targeted_excl_static,
             "pass_through": targeted_pass_through,
+            "pass_through_excl_public": targeted_pass_through_excl_public,
             "employment": targeted_employment,
+            "employment_excl_public": targeted_employment_excl_public,
         }
     else:
         print("Step 8: Targeted recent-NEET population skipped (pass --lfs-path to build it).")
         targeted = None
 
-    # ── Step 9: Household calculator (opt-in: --include-calculator) ─────────
+    # ── Step 9: Write dashboard JSON ────────────────────────────────────────
 
-    if args.include_calculator:
-        print("Step 9: Household calculator lookup...")
-        person_calculator = build_person_calculator_lookup(
-            year=YEAR,
-            secondary_threshold=SECONDARY_THRESHOLD,
-            upper_secondary_threshold=UPPER_SECONDARY_THRESHOLD,
-            employer_rate=EMPLOYER_RATE,
-            grid_min=args.grid_min,
-            grid_max=args.grid_max,
-            grid_count=args.grid_count,
-            annual_rent=args.calculator_rent,
-        )
-    else:
-        print("Step 9: Household calculator skipped (pass --include-calculator to build it).")
-        person_calculator = None
-
-    # ── Step 10: Write dashboard JSON ───────────────────────────────────────
-
-    print("Step 10: Writing results JSON...")
+    print("Step 9: Writing results JSON...")
     methods = {
         "static": (
             "Per person in PolicyEngine UK's enhanced-FRS microdata: the statutory "
@@ -678,6 +1017,18 @@ def run(args: argparse.Namespace) -> None:
             "Reform object that zero-rates the relieved band for 18-24s; the build "
             "fails if it diverges from the threshold arithmetic by more than 0.1%."
         ),
+        "public_sector_exclusion": (
+            "Employer NICs paid by a public-sector employer (NHS, state schools, "
+            "councils, civil service, armed forces) flow from one part of "
+            "government to another, so exempting them nets out of the consolidated "
+            'public finances rather than costing the Exchequer. The "exclude '
+            'public-sector employers" view therefore restricts the cost, '
+            "pass-through and jobs figures to non-public employees, identified by "
+            "PolicyEngine UK's employment_sector variable (from the FRS main-job "
+            "sector). The default view keeps public-sector employers in, matching "
+            "conventional HMRC/OBR departmental scoring; the toggle shows the "
+            "consolidated-Exchequer view."
+        ),
         "targeted_population": (
             "The targeted variant restricts the relief to employed 21-24-year-olds who "
             "were NEET within the past year, estimated from pooled LFS 5-quarter "
@@ -696,9 +1047,26 @@ def run(args: argparse.Namespace) -> None:
     output = {
         "year": YEAR,
         "fiscal_year_label": f"{YEAR}-{(YEAR + 1) % 100:02d}",
-        # The policyengine[uk] bundle exact-pins policyengine-uk, so the
-        # bundle version alone identifies the whole simulation stack.
-        "package_versions": {"policyengine": importlib.metadata.version("policyengine")},
+        # When run directly on a dataset (--dataset), policyengine-uk is the
+        # simulation stack; with --populace, the Populace UK dataset is loaded
+        # THROUGH the policyengine.py wrapper (managed_microsimulation);
+        # otherwise the policyengine[uk] bundle's default dataset is used. The
+        # bundle exact-pins policyengine-uk.
+        "package_versions": {
+            "policyengine": importlib.metadata.version("policyengine"),
+            "policyengine_uk": importlib.metadata.version("policyengine-uk"),
+            "dataset": (
+                populace_source
+                if getattr(args, "populace", False)
+                else (str(args.dataset) if args.dataset else None)
+            ),
+            "dataset_source": ("populace-uk" if getattr(args, "populace", False) else None),
+            "simulation_stack": (
+                "policyengine.py (managed_microsimulation)"
+                if getattr(args, "populace", False)
+                else ("policyengine-uk (direct)" if args.dataset else "policyengine.py (bundle)")
+            ),
+        },
         "settings": {
             "pass_through_scenarios": list(args.pass_through),
             "demand_elasticities": {
@@ -729,6 +1097,23 @@ def run(args: argparse.Namespace) -> None:
             "static_cost_18_20_bn": static_cost_18_20 / 1e9,
             "by_age_band": by_age_band,
             "reconciliation": reconciliation,
+            "public_private_employment": (
+                {
+                    "n_public_all_employees": float((is_employee & is_public).sum()),
+                    "n_private_all_employees": float((is_employee & ~is_public).sum()),
+                    "n_public_18_24": float((headline_mask & is_public).sum()),
+                    "n_private_18_24": float((headline_mask & ~is_public).sum()),
+                    "n_public_21_24": float((marginal_mask & is_public).sum()),
+                    "n_private_21_24": float((marginal_mask & ~is_public).sum()),
+                    "public_share_18_24": (
+                        float((headline_mask & is_public).sum()) / n_headline
+                        if n_headline > 0
+                        else 0.0
+                    ),
+                }
+                if is_public is not None
+                else None
+            ),
         },
         "reform": {
             "population_label": POPULATION_LABEL_FULL,
@@ -746,11 +1131,14 @@ def run(args: argparse.Namespace) -> None:
                 "by_income_quintile": by_income_quintile,
                 "by_income_quartile": by_income_quartile,
             },
+            "static_excl_public": excl_static,
             "pass_through": pass_through_scenarios,
+            "pass_through_excl_public": pass_through_excl_public,
             "employment": employment_scenarios,
+            "employment_excl_public": employment_excl_public,
+            "public_split": public_split,
         },
         "targeted": targeted,
-        "person_calculator": person_calculator,
     }
 
     for destination in [

@@ -123,11 +123,8 @@ function Dashboard() {
               Young-worker NICs exemption
             </TabLink>{" "}
             tab shows the static cost of the reform and the behavioural results:
-            wage pass-through simulations and poverty and distributional impacts
-            {data?.person_calculator
-              ? ", plus a single-worker household calculator"
-              : ""}
-            . It can switch between the full 21-24 population and a targeted
+            wage pass-through simulations and distributional impacts.
+            It can switch between the full 21-24 population and a targeted
             population of employees who were recently NEET. The{" "}
             <TabLink onSelect={() => handleTabChange("baseline")}>
               Youth labour market baseline
@@ -184,12 +181,7 @@ function Dashboard() {
               PolicyEngine/young-worker-nics
             </a>
             {data?.package_versions
-              ? `, run on ${Object.entries(data.package_versions)
-                  .map(
-                    ([name, version]) =>
-                      `${name === "policyengine" ? "policyengine.py" : name} ${version}`
-                  )
-                  .join(" and ")}`
+              ? `, run on policyengine.py ${data.package_versions.policyengine}`
               : ""}
             .
           </p>

@@ -9,15 +9,9 @@ export default function BaselineTab({ data }) {
   const params = getNicsParameters(data);
   const neet = data.official_stats.neet;
   const hmrc = data.official_stats.hmrc_relief;
-  const rti = data.official_stats.rti;
-  const lfs = data.official_stats.lfs_employment;
   const ashe = data.official_stats.ashe_earnings;
   const reliefs = data.statutory_unmodelled;
   const recon = baseline.reconciliation;
-  const bands = baseline.by_age_band;
-  const band1820 = bands[0];
-  const band2124 = bands[1];
-  const relievedTotal = band1820.static_cost_bn + band2124.static_cost_bn;
 
   return (
     <div className="space-y-6">
@@ -32,7 +26,7 @@ export default function BaselineTab({ data }) {
       <section className="section-card">
         <SectionHeading
           title="Youth population by activity status"
-          description={`Every young person is in exactly one of three states: in education, in employment, or in neither (NEET). A student with a part-time job counts as both in education and in employment, and is never NEET. Model counts from the PolicyEngine UK enhanced FRS; the official column from the ONS.${
+          description={`Every young person is in exactly one of three states: in education, in employment, or in neither (NEET). A student with a part-time job counts as both in education and in employment, and is never NEET. Model counts from PolicyEngine UK; the official column from the ONS.${
             data.targeted?.entrant_share != null
               ? ` These states churn: in the LFS five-quarter panels, ${formatPct(data.targeted.entrant_share * 100, 1)} of employed 21-24-year-olds were NEET at some point in the previous year, the entrant share behind the reform tab's targeted variant.`
               : ""
@@ -48,22 +42,6 @@ export default function BaselineTab({ data }) {
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td>Population</td>
-              <td>{formatCount(recon.model_16_24.population)}</td>
-              <td>{formatCount(recon.model_18_24.population)}</td>
-              <td>
-                ~
-                <a
-                  href={recon.official_16_24.source}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="underline"
-                >
-                  {formatCount(recon.official_16_24.population_implied)}
-                </a>
-              </td>
-            </tr>
             <tr>
               <td>In education</td>
               <td>{formatCount(recon.model_16_24.in_education)}</td>
@@ -101,6 +79,83 @@ export default function BaselineTab({ data }) {
           </tbody>
         </table>
       </section>
+
+      {baseline.public_private_employment && (
+        <section className="section-card">
+          <SectionHeading
+            title="Public and private sector employment"
+            description="Whether a worker's main job is in the public sector (NHS, state schools, councils, civil service, armed forces) or the private sector, from the survey main-job sector. This matters for the reform: employer NICs on a public-sector job are paid by government to government, so exempting them nets out of the consolidated public finances — the reform tab's 'exclude public-sector employers' toggle removes them from the cost. Young workers skew heavily private."
+          />
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Measure</th>
+                <th>Model</th>
+                <th>Official</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Public-sector employees (all ages)</td>
+                <td>{formatCount(baseline.public_private_employment.n_public_all_employees)}</td>
+                <td>
+                  ~
+                  <a
+                    href={data.official_stats.public_sector_employment.source}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {formatCount(data.official_stats.public_sector_employment.total_uk)}
+                  </a>{" "}
+                  (ONS PSE, {data.official_stats.public_sector_employment.period_label})
+                </td>
+              </tr>
+              <tr>
+                <td>Public share of all employees</td>
+                <td>
+                  {formatPct(
+                    (baseline.public_private_employment.n_public_all_employees /
+                      (baseline.public_private_employment.n_public_all_employees +
+                        baseline.public_private_employment.n_private_all_employees)) *
+                      100,
+                    1,
+                  )}
+                </td>
+                <td>
+                  ~
+                  <a
+                    href={data.official_stats.public_sector_employment.source}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {formatPct(
+                      data.official_stats.public_sector_employment.share_of_total_employment * 100,
+                      1,
+                    )}
+                  </a>{" "}
+                  (ONS)
+                </td>
+              </tr>
+              <tr>
+                <td>Public-sector employees, 18-24</td>
+                <td>{formatCount(baseline.public_private_employment.n_public_18_24)}</td>
+                <td>—</td>
+              </tr>
+              <tr>
+                <td>Public share among 18-24 employees</td>
+                <td>{formatPct(baseline.public_private_employment.public_share_18_24 * 100, 1)}</td>
+                <td>—</td>
+              </tr>
+            </tbody>
+          </table>
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            The model&apos;s all-ages public-sector total sits close to the ONS Public
+            Sector Employment headcount. ONS does not publish a public/private split
+            for 18-24-year-olds specifically; the model&apos;s low youth public share
+            reflects that NHS, teaching and civil-service roles skew older.
+          </p>
+        </section>
+      )}
 
       <div className="pt-2">
         <SectionHeading
@@ -155,51 +210,6 @@ export default function BaselineTab({ data }) {
         </table>
       </section>
 
-      <section className="section-card">
-        <SectionHeading
-          title="Employer NICs paid on young workers"
-          description={`Modelled employer NICs in ${data.fiscal_year_label} in the relieved band (earnings between the Secondary and Upper Secondary Thresholds, the only part the zero rate touches) by age band. The 18-20 amount is not actually paid in practice (under-21s are already exempt in law), so the 21-24 row is the reform's marginal static cost. ${data.age_band_note}`}
-        />
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Age band</th>
-              <th>Employees</th>
-              <th>Employer NICs in relieved band</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>{band1820.group} (already exempt in law)</td>
-              <td>{formatCount(band1820.n_employees)}</td>
-              <td>{formatBn(band1820.static_cost_bn)}</td>
-            </tr>
-            <tr className="font-semibold">
-              <td>{band2124.group}, the reform&apos;s marginal static cost</td>
-              <td>{formatCount(band2124.n_employees)}</td>
-              <td>{formatBn(data.reform.static.marginal_cost_bn)}</td>
-            </tr>
-            {data.targeted?.static && (
-              <tr>
-                <td>of which NEET within the past year (the targeted variant)</td>
-                <td>{formatCount(data.targeted.static.n_marginal_employees)}</td>
-                <td>{formatBn(data.targeted.static.marginal_cost_bn)}</td>
-              </tr>
-            )}
-            <tr>
-              <td>All 18-24, relieved band</td>
-              <td>{formatCount(baseline.n_employees_18_24)}</td>
-              <td>{formatBn(relievedTotal)}</td>
-            </tr>
-            <tr>
-              <td>All 18-24, total employer NICs (incl. earnings above the UST)</td>
-              <td>{formatCount(baseline.n_employees_18_24)}</td>
-              <td>{formatBn(baseline.employer_nics_18_24_bn)}</td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
-
       <div className="pt-2">
         <SectionHeading
           size="lg"
@@ -244,27 +254,6 @@ export default function BaselineTab({ data }) {
                 {hmrc.forecast_period_label} earnings. Outturn at the old parameters
                 was {formatBn(hmrc.under_21_relief_cost_2024_25_bn)} in{" "}
                 {hmrc.outturn_period_label}.
-              </td>
-            </tr>
-            <tr>
-              <td>Employees aged 18-24</td>
-              <td>{formatCount(baseline.n_employees_18_24)}</td>
-              <td>
-                <a href={lfs.source} target="_blank" rel="noreferrer" className="underline">
-                  {formatCount(lfs.employment_18_24)}
-                </a>{" "}
-                in employment, {lfs.period_label} (LFS)
-              </td>
-              <td>
-                The LFS figure ({formatPct(lfs.employment_rate_18_24 * 100)} employment
-                rate) includes the self-employed, whom the model&apos;s employee count
-                excludes, so the model sits below it. HMRC{" "}
-                <a href={rti.source} target="_blank" rel="noreferrer" className="underline">
-                  RTI
-                </a>
-                &apos;s payrolled under-25 count fell{" "}
-                {formatCount(Math.abs(rti.payrolled_under_25_change_yoy))} in the
-                year to {rti.period_label}.
               </td>
             </tr>
             <tr>

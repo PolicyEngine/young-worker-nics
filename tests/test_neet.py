@@ -88,7 +88,7 @@ def test_neet_only_at_wave_5_does_not_count():
 
 
 def test_negative_pay_sentinels_are_missing_not_zero():
-    annual = annualise_pay(np.array([-8.0, -9.0, 0.0, 100.0]))
+    annual = annualise_pay(np.array([-8.0, -9.0, 0.0, 100.0]), 52)
     assert np.isnan(annual[0]) and np.isnan(annual[1])
     assert annual[2] == 0.0
     assert annual[3] == 5_200.0
