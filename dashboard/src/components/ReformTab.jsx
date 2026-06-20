@@ -134,6 +134,11 @@ function StaticView({ data, targeted, excludePublic }) {
   // Group splits spread the total thinly; one decimal would round the
   // smaller groups to £0.0bn.
   const breakdownMoney = (v) => `£${Number(v).toFixed(2)}bn`;
+  // Appended to the section copy when the public-sector employers are
+  // excluded, so the text matches the *_excl_public figures on screen.
+  const publicScopeNote = excludePublic
+    ? " Public-sector employers are excluded here: employer NICs on a public-sector job (NHS, state schools, councils, civil service, armed forces) are paid by government to government, so exempting them nets out of the consolidated public finances. The figures cover non-public employees only."
+    : "";
 
   return (
     <>
@@ -241,8 +246,8 @@ function StaticView({ data, targeted, excludePublic }) {
           title="Static fiscal cost"
           description={
             targeted
-              ? `Static means wages, employment and behaviour are held fixed: the cost is the employer NICs no longer charged in ${data.fiscal_year_label}, computed person by person on the PolicyEngine UK enhanced FRS, with each employed 21-24-year-old counted at their imputed probability of having been NEET within the past year. What happens when employers respond is in the Population (behavioural) view.`
-              : `Static means wages, employment and behaviour are held fixed: the cost is simply the employer NICs no longer charged in ${data.fiscal_year_label}, computed person by person on the PolicyEngine UK enhanced FRS. Under-21s are already exempt in law, so the marginal cost comes from employed 21-24-year-olds. What happens when employers respond is in the Population (behavioural) view.`
+              ? `Static means wages, employment and behaviour are held fixed: the cost is the employer NICs no longer charged in ${data.fiscal_year_label}, computed person by person in PolicyEngine UK, with each employed 21-24-year-old counted at their imputed probability of having been NEET within the past year. What happens when employers respond is in the Population (behavioural) view.${publicScopeNote}`
+              : `Static means wages, employment and behaviour are held fixed: the cost is simply the employer NICs no longer charged in ${data.fiscal_year_label}, computed person by person in PolicyEngine UK. Under-21s are already exempt in law, so the marginal cost comes from employed 21-24-year-olds. What happens when employers respond is in the Population (behavioural) view.${publicScopeNote}`
           }
         />
       </div>
@@ -324,32 +329,30 @@ function StaticView({ data, targeted, excludePublic }) {
               ) : (
                 "Labour Force Survey"
               )}{" "}
-              interviews each respondent five times over a year, so it records
-              who moved from NEET status (not in employment, education or
-              training) into work.
+              interviews each respondent five times over a year, capturing who
+              moved from NEET status (not in employment, education or training)
+              into work.
               {targeted.lfs_panels != null && targeted.entrant_share != null && (
                 <>
                   {" "}
-                  Pooling {targeted.lfs_panels.count} of these{" "}
+                  Pooling {targeted.lfs_panels.count}{" "}
                   {data.official_stats.lfs_5q_panels?.source ? (
                     <SourceLink href={data.official_stats.lfs_5q_panels.source}>
-                      panels
+                      five-quarter panels
                     </SourceLink>
                   ) : (
-                    "panels"
+                    "five-quarter panels"
                   )}{" "}
-                  ({targeted.lfs_panels.period}; {targeted.lfs_panels.studies})
-                  shows that{" "}
+                  ({targeted.lfs_panels.period}),{" "}
                   {formatPct(targeted.entrant_share * 100, 1)} of employed
                   21-24-year-olds were NEET at some point in the previous year.
                 </>
               )}{" "}
-              A quantile random forest trained on those panel members gives
-              every employed 21-24-year-old in the model their own probability
-              of being such a recent entrant, predicted from age, sex and
-              earnings and calibrated so the average matches the measured
-              share. Every figure above counts each employee at that
-              probability. Full detail is on the Methodology tab.
+              A quantile random forest trained on those members and calibrated
+              to that share gives every employed 21-24-year-old their own
+              probability of being such a recent entrant, from age, sex and
+              earnings. Every figure above counts each employee at that
+              probability; full detail is on the Methodology tab.
             </p>
           </details>
         )}
@@ -423,6 +426,11 @@ function BehaviouralView({ data, targeted, excludePublic }) {
       : (targeted ? targeted.employment : getEmploymentScenarios(data))) ?? [];
   const obr = data.official_stats.obr;
   const evidence = data.official_stats.elasticity_evidence;
+  // Shown in the section copy when public-sector employers are excluded, so
+  // the text matches the *_excl_public scenarios on screen.
+  const publicScopeNote = excludePublic
+    ? " Public-sector employers are excluded here: their employer NICs are paid by government to government, so exempting them nets out of the consolidated public finances; these scenarios cover non-public employees only."
+    : "";
   const defaultScenario =
     passThrough.find(
       (s) => s.pass_through_rate === obr.medium_term_pass_through
@@ -500,6 +508,7 @@ function BehaviouralView({ data, targeted, excludePublic }) {
               </SourceLink>{" "}
               (Saez, Schoefer &amp; Seim 2019) supports the lower{" "}
               {formatPct(data.settings.pass_through_scenarios[1] * 100, 0)}.
+              {publicScopeNote}
             </>
           }
         />
@@ -586,7 +595,7 @@ function BehaviouralView({ data, targeted, excludePublic }) {
       <section className="section-card">
         <SectionHeading
           title="Composition of the fiscal offset"
-          description={`Decomposition of the fiscal offset under the selected ${formatPct(scenario.pass_through_rate * 100, 0)} pass-through scenario. With zero pass-through no saving reaches workers' pay, so there is no offset, poverty or distributional effect to show; those results exist only for the scenarios with positive pass-through.`}
+          description={`Decomposition of the fiscal offset under the selected ${formatPct(scenario.pass_through_rate * 100, 0)} pass-through scenario. With zero pass-through no saving reaches workers' pay, so there is no offset or distributional effect to show; those results exist only for the scenarios with positive pass-through.`}
         />
         {scenario.pass_through_rate > 0 &&
           (scenario.offset_components_bn == null ? (
@@ -642,42 +651,6 @@ function BehaviouralView({ data, targeted, excludePublic }) {
           </>
           ))}
       </section>
-
-      {scenario.pass_through_rate > 0 && (
-        <section className="section-card">
-          <SectionHeading
-            title="Poverty impact"
-            description={`Absolute poverty before housing costs in ${data.fiscal_year_label} under the ${formatPct(scenario.pass_through_rate * 100, 0)} pass-through scenario, baseline versus reform. Poverty is measured on household income, so people who share a household with a young worker whose pay rises can move out of poverty too.`}
-          />
-          {targeted ? (
-            <p className="text-sm text-slate-500">
-              Not reported for the targeted population. Poverty is a threshold
-              measure: it requires each entrant&apos;s actual wage gain, whereas
-              the targeted simulation spreads the boost in small per-person
-              probability shares across all employees, which cannot move
-              households across the poverty line.
-            </p>
-          ) : scenario.poverty == null ? (
-            <NotComputedNote />
-          ) : (
-          <div className="grid gap-4 md:grid-cols-3">
-            <MetricCard
-              label="Poverty rate change, all people (absolute, before housing costs)"
-              value={`${((scenario.poverty.reformed_rate_bhc - scenario.poverty.baseline_rate_bhc) * 100).toFixed(2)}pp`}
-            />
-            <MetricCard
-              label="Poverty rate change, 18-24 (absolute, before housing costs)"
-              value={`${((scenario.poverty.reformed_rate_bhc_18_24 - scenario.poverty.baseline_rate_bhc_18_24) * 100).toFixed(2)}pp`}
-            />
-            <MetricCard
-              label="People lifted out of poverty"
-              value={formatCount(scenario.poverty.people_lifted)}
-              note={`${formatCount(scenario.poverty.people_lifted_18_24)} are themselves aged 18-24; the rest share a household with a young worker whose pay rises.`}
-            />
-          </div>
-          )}
-        </section>
-      )}
 
       {scenario.pass_through_rate > 0 && (
         <section className="section-card">
@@ -919,7 +892,7 @@ export default function ReformTab({ data }) {
   // with the employment_sector variable.
   const hasPublicSplit = (data.reform.static_excl_public ?? null) !== null;
   const [subTab, setSubTab] = useState("static");
-  const [population, setPopulation] = useState(targeted !== null ? "neet" : "all");
+  const [population, setPopulation] = useState("all");
   const [employer, setEmployer] = useState("all");
   const populationView = subTab === "static" || subTab === "behavioural";
   const useTargeted = targeted !== null && population === "neet";

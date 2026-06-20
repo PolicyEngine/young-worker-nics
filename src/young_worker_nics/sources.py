@@ -20,8 +20,6 @@ REFORM_AGE_LOWER = 18
 REFORM_AGE_UPPER = 24  # inclusive
 MARGINAL_AGE_LOWER = 21
 
-WEEKS_PER_YEAR = 52  # PolicyEngine stores NICs thresholds per week
-
 # LFS adult-interview floor and conventional working-age ceiling, bounding
 # the NEET-imputation donor pool (employed at wave 5, working age).
 LFS_ADULT_AGE_FLOOR = 16

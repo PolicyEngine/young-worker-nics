@@ -28,7 +28,6 @@ from .sources import (
     LFS_ADULT_AGE_FLOOR,
     MARGINAL_AGE_LOWER,
     REFORM_AGE_UPPER,
-    WEEKS_PER_YEAR,
     WORKING_AGE_CEILING,
 )
 
@@ -88,21 +87,14 @@ def derive_period(lfs_paths: list[str]) -> str:
 
 
 def derive_studies(lfs_paths: list[str]) -> str:
-    """UKDA study numbers parsed from the file paths, e.g. 'UKDA SN 9133, 9482'.
-
-    Falls back to the panel filenames when the paths carry no UKDA-XXXX study
-    number (e.g. the .tab files were relocated out of their UKDA directories),
-    so the build does not depend on the original UKDA folder layout.
-    """
+    """UKDA study numbers parsed from the file paths, e.g. 'UKDA SN 9133, 9482'."""
     numbers = set()
     for path in lfs_paths:
         match = _STUDY_RE.search(str(path))
-        if match:
-            numbers.add(int(match[1]))
-    if numbers:
-        return "UKDA SN " + ", ".join(str(n) for n in sorted(numbers))
-    names = sorted(Path(p).stem for p in lfs_paths)
-    return "LFS 5-quarter longitudinal panels: " + ", ".join(names)
+        if not match:
+            raise ValueError(f"Cannot parse the UKDA study number from path: {path}")
+        numbers.add(int(match[1]))
+    return "UKDA SN " + ", ".join(str(n) for n in sorted(numbers))
 
 
 def neet_transition_targets(panel: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
@@ -118,10 +110,14 @@ def neet_transition_targets(panel: pd.DataFrame) -> tuple[np.ndarray, np.ndarray
     return employed_w5, was_neet
 
 
-def annualise_pay(weekly_pay: np.ndarray) -> np.ndarray:
-    """Annual gross pay; negative sentinels (GRSSWK5 < 0) are missing, never £0."""
+def annualise_pay(weekly_pay: np.ndarray, weeks_in_year: float) -> np.ndarray:
+    """Annual gross pay; negative sentinels (GRSSWK5 < 0) are missing, never £0.
+
+    ``weeks_in_year`` is PolicyEngine's WEEKS_IN_YEAR, supplied by the caller so
+    this module stays import-safe without policyengine_uk (pure-Python tests).
+    """
     weekly_pay = np.asarray(weekly_pay, dtype=float)
-    return np.where(weekly_pay >= 0, weekly_pay * WEEKS_PER_YEAR, np.nan)
+    return np.where(weekly_pay >= 0, weekly_pay * weeks_in_year, np.nan)
 
 
 def _calibrate(
@@ -210,13 +206,16 @@ def build_neet_imputation(
     treated_mask = np.asarray(treated_mask, dtype=bool)
     person_weights = np.asarray(person_weights, dtype=float)
 
+    # Weeks-per-year from PolicyEngine (model constant), never hardcoded.
+    from policyengine_uk.model_api import WEEKS_IN_YEAR
+
     lfs = load_panels(lfs_paths)
     panel = lfs[lfs.LGWT.notna()].copy()
 
     employed_w5, was_neet = neet_transition_targets(panel)
     age5 = panel.AGE5.to_numpy(dtype=float)
     weights = panel.LGWT.to_numpy(dtype=float)
-    annual_pay = annualise_pay(panel.GRSSWK5.to_numpy(dtype=float))
+    annual_pay = annualise_pay(panel.GRSSWK5.to_numpy(dtype=float), WEEKS_IN_YEAR)
 
     young_donors = employed_w5 & (age5 >= MARGINAL_AGE_LOWER) & (age5 <= REFORM_AGE_UPPER)
     entrant_share = _weighted_mean(was_neet[young_donors], weights[young_donors])

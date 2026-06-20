@@ -38,7 +38,6 @@ from .sources import (
     MARGINAL_AGE_LOWER,
     REFORM_AGE_LOWER,
     REFORM_AGE_UPPER,
-    WEEKS_PER_YEAR,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -268,9 +267,7 @@ def _freeze_baseline(baseline, year: int) -> _FrozenBaseline:
             ("equiv_hbai_household_net_income", None): baseline.calculate(
                 "equiv_hbai_household_net_income", year
             ),
-            ("household_net_income", None): baseline.calculate(
-                "household_net_income", year
-            ),
+            ("household_net_income", None): baseline.calculate("household_net_income", year),
         },
         frame_cache={
             # neet.py builds the recent-NEET imputation receiver frame from
@@ -335,15 +332,19 @@ def run(args: argparse.Namespace) -> None:
     # ── Step 2: Statutory parameters from the PolicyEngine parameter tree ───
 
     print("Step 2: Reading statutory NICs parameters...")
+    # Weeks-per-year comes from PolicyEngine (model constant), never hardcoded:
+    # PolicyEngine stores the NICs thresholds per week.
+    from policyengine_uk.model_api import WEEKS_IN_YEAR
+
     _class_1 = baseline.tax_benefit_system.parameters(
         f"{YEAR}-01-01"
     ).gov.hmrc.national_insurance.class_1
     EMPLOYER_RATE = float(_class_1.rates.employer)
-    SECONDARY_THRESHOLD = float(_class_1.thresholds.secondary_threshold) * WEEKS_PER_YEAR
+    SECONDARY_THRESHOLD = float(_class_1.thresholds.secondary_threshold) * WEEKS_IN_YEAR
     # The under-21 / apprentice Upper Secondary Thresholds are aligned with
     # the Upper Earnings Limit; PolicyEngine does not model the USTs
     # separately, so we read the UEL.
-    UPPER_SECONDARY_THRESHOLD = float(_class_1.thresholds.upper_earnings_limit) * WEEKS_PER_YEAR
+    UPPER_SECONDARY_THRESHOLD = float(_class_1.thresholds.upper_earnings_limit) * WEEKS_IN_YEAR
     print(
         f"    employer rate {EMPLOYER_RATE:.1%}, ST £{SECONDARY_THRESHOLD:,.0f}, "
         f"UST £{UPPER_SECONDARY_THRESHOLD:,.0f}"
@@ -1020,8 +1021,8 @@ def run(args: argparse.Namespace) -> None:
             "Employer NICs paid by a public-sector employer (NHS, state schools, "
             "councils, civil service, armed forces) flow from one part of "
             "government to another, so exempting them nets out of the consolidated "
-            "public finances rather than costing the Exchequer. The \"exclude "
-            "public-sector employers\" view therefore restricts the cost, "
+            'public finances rather than costing the Exchequer. The "exclude '
+            'public-sector employers" view therefore restricts the cost, '
             "pass-through and jobs figures to non-public employees, identified by "
             "PolicyEngine UK's employment_sector variable (from the FRS main-job "
             "sector). The default view keeps public-sector employers in, matching "
@@ -1059,17 +1060,11 @@ def run(args: argparse.Namespace) -> None:
                 if getattr(args, "populace", False)
                 else (str(args.dataset) if args.dataset else None)
             ),
-            "dataset_source": (
-                "populace-uk" if getattr(args, "populace", False) else None
-            ),
+            "dataset_source": ("populace-uk" if getattr(args, "populace", False) else None),
             "simulation_stack": (
                 "policyengine.py (managed_microsimulation)"
                 if getattr(args, "populace", False)
-                else (
-                    "policyengine-uk (direct)"
-                    if args.dataset
-                    else "policyengine.py (bundle)"
-                )
+                else ("policyengine-uk (direct)" if args.dataset else "policyengine.py (bundle)")
             ),
         },
         "settings": {
