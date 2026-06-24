@@ -127,7 +127,6 @@ function StaticView({ data, targeted, excludePublic, hoursCut }) {
   // remain all-employee.
   const ftBlock = hoursCut != null ? (staticResults?.full_time_only?.[hoursCut] ?? null) : null;
   const showFt = ftBlock != null;
-  const ftEstimated = staticResults?.full_time_only?.estimated ?? false;
   const displayMarginalCost = showFt ? ftBlock.marginal_cost_bn : staticResults?.marginal_cost_bn;
   const displayNMarginal = showFt ? ftBlock.n_marginal_employees : staticResults?.n_marginal_employees;
   const displayAvgSaving = showFt
