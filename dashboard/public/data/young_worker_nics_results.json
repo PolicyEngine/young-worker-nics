@@ -508,7 +508,26 @@
           "n_employees": 618696.9711986184,
           "static_cost_bn": 2.515126964780446
         }
-      ]
+      ],
+      "full_time_only": {
+        "estimated": false,
+        "30": {
+          "marginal_cost_bn": 6.252411554576257,
+          "headline_quantum_bn": 7.019748327671877,
+          "n_marginal_employees": 1601235.0711880624,
+          "avg_saving_per_employee": 3904.7430743177383,
+          "cost_share_of_all": 0.9378,
+          "hours_cut": 30.0
+        },
+        "35": {
+          "marginal_cost_bn": 6.043267220155325,
+          "headline_quantum_bn": 6.711447130317073,
+          "n_marginal_employees": 1477803.481387198,
+          "avg_saving_per_employee": 4089.3578180520835,
+          "cost_share_of_all": 0.9064,
+          "hours_cut": 35.0
+        }
+      }
     },
     "static_excl_public": {
       "marginal_cost_bn": 5.961918330800139,
@@ -760,7 +779,26 @@
           "n_employees": 569082.3080418259,
           "static_cost_bn": 2.306347720771532
         }
-      ]
+      ],
+      "full_time_only": {
+        "estimated": false,
+        "30": {
+          "marginal_cost_bn": 5.564948608188774,
+          "headline_quantum_bn": 6.269734178373264,
+          "n_marginal_employees": 1419964.0920629352,
+          "avg_saving_per_employee": 3919.0769958865453,
+          "cost_share_of_all": 0.9334,
+          "hours_cut": 30.0
+        },
+        "35": {
+          "marginal_cost_bn": 5.369816697778671,
+          "headline_quantum_bn": 5.978159976734972,
+          "n_marginal_employees": 1302912.8966424614,
+          "avg_saving_per_employee": 4121.393465070772,
+          "cost_share_of_all": 0.9007,
+          "hours_cut": 35.0
+        }
+      }
     },
     "pass_through": [
       {
@@ -2012,7 +2050,26 @@
           "n_employees": 67809.83268405497,
           "static_cost_bn": 0.3328772533795999
         }
-      ]
+      ],
+      "full_time_only": {
+        "estimated": false,
+        "30": {
+          "marginal_cost_bn": 0.723998317907523,
+          "headline_quantum_bn": 0.723998317907523,
+          "n_marginal_employees": 186024.2666593194,
+          "avg_saving_per_employee": 3891.956307149094,
+          "cost_share_of_all": 0.936,
+          "hours_cut": 30.0
+        },
+        "35": {
+          "marginal_cost_bn": 0.6839294594926824,
+          "headline_quantum_bn": 0.6839294594926824,
+          "n_marginal_employees": 155746.74553260207,
+          "avg_saving_per_employee": 4391.292140030734,
+          "cost_share_of_all": 0.8842,
+          "hours_cut": 35.0
+        }
+      }
     },
     "static_excl_public": {
       "marginal_cost_bn": 0.7144173888745403,
@@ -2263,7 +2320,26 @@
           "n_employees": 62515.47154118121,
           "static_cost_bn": 0.3077093781625647
         }
-      ]
+      ],
+      "full_time_only": {
+        "estimated": false,
+        "30": {
+          "marginal_cost_bn": 0.6689261020947,
+          "headline_quantum_bn": 0.6689261020947,
+          "n_marginal_employees": 171380.35594698787,
+          "avg_saving_per_employee": 3903.166721754361,
+          "cost_share_of_all": 0.9363,
+          "hours_cut": 30.0
+        },
+        "35": {
+          "marginal_cost_bn": 0.6294066575036444,
+          "headline_quantum_bn": 0.6294066575036444,
+          "n_marginal_employees": 141493.50322815776,
+          "avg_saving_per_employee": 4448.30782434391,
+          "cost_share_of_all": 0.881,
+          "hours_cut": 35.0
+        }
+      }
     },
     "pass_through": [
       {

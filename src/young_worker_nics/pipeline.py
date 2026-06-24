@@ -432,6 +432,66 @@ def run(args: argparse.Namespace) -> None:
     print(f"    21-24 (marginal) static cost: £{static_cost_marginal / 1e9:.2f}bn")
     print(f"    18-24 headline quantum (incl. already-exempt): £{static_cost_headline / 1e9:.2f}bn")
 
+    # ── Step 4b: Full-time-only variant ─────────────────────────────────────
+    # A policy design that restricts the exemption to full-time employees only.
+    # There is NO statutory hours threshold for full-time work: ONS classifies
+    # full/part-time by the worker's own self-assessment, and GOV.UK's guidance
+    # states only that "a full-time worker will usually work 35 hours or more a
+    # week" (https://www.gov.uk/part-time-worker-rights). We therefore use the
+    # 35-hour GOV.UK benchmark as the default cut, read straight from the
+    # enhanced FRS weekly_hours (no imputation). The result is sensitive to this
+    # cut — see the cost_share figure; the median relieved 21-24 worker does ~37h,
+    # so a 37.5h cut would exclude far more. Among 21-24 employees who carry
+    # employer NICs, weekly_hours is populated for ~99.9%, so the missing-hours
+    # group is immaterial (treated as not full-time — the conservative choice).
+    print("Step 4b: Full-time-only variants...")
+    # No statutory hours threshold exists, so we report multiple plausible cuts
+    # and let the dashboard expose them as options: >30h (OECD convention) and
+    # >35h (the GOV.UK "usually 35+" benchmark). The result is cut-sensitive.
+    # Computed for every population/employer combination the dashboard offers
+    # (all-employers / exclude-public × all-21-24 / recent-NEET) via the helper
+    # below, so the working-hours toggle is live in all of them — not only the
+    # headline block.
+    FULL_TIME_HOURS_CUTS = [30.0, 35.0]
+    weekly_hours = baseline.calculate("weekly_hours", YEAR)
+    _ft_count_ones = MicroSeries(np.ones(len(weekly_hours)), weights=saving_per_person.weights)
+
+    def full_time_variants_for(value_series, count_series, marg_mask, head_mask):
+        """Full-time-only sub-block for one population.
+
+        ``value_series`` is the per-person employer-NICs saving (probability-
+        weighted for the targeted recent-NEET population); ``count_series`` is
+        the matching person count (ones, or the NEET probability). Returns the
+        marginal/headline cost restricted to each weekly-hours cut."""
+        base = float(value_series[marg_mask].sum())
+        block = {"estimated": False}
+        for cut in FULL_TIME_HOURS_CUTS:
+            isft = weekly_hours >= cut
+            mm = marg_mask & isft
+            n = float(count_series[mm].sum())
+            cost = float(value_series[mm].sum())
+            block[str(int(cut))] = {
+                "marginal_cost_bn": cost / 1e9,
+                "headline_quantum_bn": float(value_series[head_mask & isft].sum()) / 1e9,
+                "n_marginal_employees": n,
+                "avg_saving_per_employee": (cost / n if n else None),
+                "cost_share_of_all": round(cost / base, 4) if base else None,
+                "hours_cut": cut,
+            }
+        return block
+
+    full_time_variants = full_time_variants_for(
+        saving_per_person, _ft_count_ones, marginal_mask, headline_mask
+    )
+    for cut in FULL_TIME_HOURS_CUTS:
+        v = full_time_variants[str(int(cut))]
+        share = v["cost_share_of_all"]
+        print(
+            f"    21-24 >= {cut:.0f}h/wk static cost: £{v['marginal_cost_bn']:.2f}bn"
+            + (f" ({share:.1%} of marginal cost)" if share else "")
+            + f"; {v['n_marginal_employees'] / 1e6:.2f}m employees"
+        )
+
     # ── Step 5: Breakdowns ──────────────────────────────────────────────────
 
     print("Step 5: Breakdowns by age band, gender, country, income decile...")
@@ -538,6 +598,9 @@ def run(args: argparse.Namespace) -> None:
             "n_marginal_employees": n_marginal_excl,
             "avg_saving_per_employee": (
                 static_cost_marginal_excl / n_marginal_excl if n_marginal_excl > 0 else 0.0
+            ),
+            "full_time_only": full_time_variants_for(
+                saving_per_person, _ft_count_ones, mm_excl, hm_excl
             ),
             "by_age_band": [
                 breakdown_row(label, hm_excl & (age >= lo) & (age <= hi))
@@ -870,6 +933,9 @@ def run(args: argparse.Namespace) -> None:
                 "avg_saving_per_employee": (
                     targeted_cost_excl / n_targeted_excl if n_targeted_excl > 0 else 0.0
                 ),
+                "full_time_only": full_time_variants_for(
+                    targeted_saving, prob_count, mm_excl, hm_excl
+                ),
                 "by_age_band": [
                     targeted_breakdown_row(label, hm_excl & (age >= lo) & (age <= hi))
                     for label, lo, hi in AGE_BANDS
@@ -958,6 +1024,9 @@ def run(args: argparse.Namespace) -> None:
                 "marginal_cost_bn": targeted_cost / 1e9,
                 "n_marginal_employees": n_targeted,
                 "avg_saving_per_employee": targeted_cost / n_targeted,
+                "full_time_only": full_time_variants_for(
+                    targeted_saving, prob_count, marginal_mask, headline_mask
+                ),
                 "by_age_band": targeted_by_age_band,
                 "by_age": targeted_by_age,
                 "by_gender": targeted_by_gender,
@@ -1122,6 +1191,7 @@ def run(args: argparse.Namespace) -> None:
                 "headline_quantum_bn": static_cost_headline / 1e9,
                 "n_marginal_employees": n_marginal,
                 "avg_saving_per_employee": static_cost_marginal / n_marginal,
+                "full_time_only": full_time_variants,
                 "by_age_band": by_age_band,
                 "by_age": by_age,
                 "by_gender": by_gender,

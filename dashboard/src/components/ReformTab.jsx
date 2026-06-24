@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Bar,
@@ -109,7 +110,7 @@ function SourceLink({ href, children }) {
   );
 }
 
-function StaticView({ data, targeted, excludePublic }) {
+function StaticView({ data, targeted, excludePublic, hoursCut }) {
   const dimensions = DIMENSIONS;
   const [dimension, setDimension] = useState("by_income_quartile");
   // `targeted` mirrors the data.reform schema; the pipeline may omit some
@@ -119,6 +120,19 @@ function StaticView({ data, targeted, excludePublic }) {
   const staticResults = excludePublic
     ? (targeted ? (targeted.static_excl_public ?? null) : (data.reform.static_excl_public ?? null))
     : (targeted ? (targeted.static ?? null) : getStatic(data));
+  // Full-time-only variants: restrict the exemption to employees working more
+  // than the selected weekly-hours cut, read directly from the enhanced FRS.
+  // There is no statutory hours threshold, so the cut is a user choice; the
+  // selected variant overlays the three headline metrics, breakdowns below
+  // remain all-employee.
+  const ftBlock = hoursCut != null ? (staticResults?.full_time_only?.[hoursCut] ?? null) : null;
+  const showFt = ftBlock != null;
+  const ftEstimated = staticResults?.full_time_only?.estimated ?? false;
+  const displayMarginalCost = showFt ? ftBlock.marginal_cost_bn : staticResults?.marginal_cost_bn;
+  const displayNMarginal = showFt ? ftBlock.n_marginal_employees : staticResults?.n_marginal_employees;
+  const displayAvgSaving = showFt
+    ? ftBlock.avg_saving_per_employee
+    : staticResults?.avg_saving_per_employee;
   const allRows = staticResults?.[dimension];
   // The targeted population has no under-21s (their relief is already law);
   // their age rows carry exactly zero weight, so drop empty groups.
@@ -262,6 +276,7 @@ function StaticView({ data, targeted, excludePublic }) {
         {staticResults?.marginal_cost_bn == null ? (
           <NotComputedNote />
         ) : (
+        <>
         <div className="grid gap-4 md:grid-cols-3">
           <MetricCard
             label={
@@ -269,7 +284,7 @@ function StaticView({ data, targeted, excludePublic }) {
                 ? "Static cost: relieved band for recent-NEET employed 21-24s"
                 : "Static cost: relieved band for employed 21-24s"
             }
-            value={`£${Number(staticResults.marginal_cost_bn).toFixed(2)}bn`}
+            value={`£${Number(displayMarginalCost).toFixed(2)}bn`}
             note={
               targeted ? null : (
                 <>
@@ -288,11 +303,11 @@ function StaticView({ data, targeted, excludePublic }) {
                 : "Employees newly exempt: employed 21-24-year-olds"
             }
             value={
-              staticResults.n_marginal_employees == null
+              displayNMarginal == null
                 ? "—"
-                : staticResults.n_marginal_employees >= 1e6
-                  ? `${(staticResults.n_marginal_employees / 1e6).toFixed(2)}m`
-                  : `${Math.round(staticResults.n_marginal_employees / 1e3)}k`
+                : displayNMarginal >= 1e6
+                  ? `${(displayNMarginal / 1e6).toFixed(2)}m`
+                  : `${Math.round(displayNMarginal / 1e3)}k`
             }
             note={
               targeted ? null : (
@@ -308,12 +323,13 @@ function StaticView({ data, targeted, excludePublic }) {
           <MetricCard
             label="Average employer NICs saving per newly exempt employee"
             value={
-              staticResults.avg_saving_per_employee != null
-                ? formatCurrency(staticResults.avg_saving_per_employee)
+              displayAvgSaving != null
+                ? formatCurrency(displayAvgSaving)
                 : "—"
             }
           />
         </div>
+        </>
         )}
         {targeted && (
           <details className="mt-4">
@@ -878,6 +894,15 @@ const EMPLOYERS = [
   { id: "exclude_public", label: "Exclude public-sector employers" },
 ];
 
+// The working-hours toggle exists only when the pipeline emitted the
+// full_time_only block. There is no statutory full/part-time hours threshold,
+// so we expose multiple plausible cuts rather than a single "definition".
+const HOURS = [
+  { id: "all", label: "All hours", cut: null },
+  { id: "ft30", label: "More than 30h/week", cut: "30" },
+  { id: "ft35", label: "More than 35h/week", cut: "35" },
+];
+
 function ToggleGroupLabel({ children }) {
   return (
     <span className="w-32 shrink-0 text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -891,13 +916,22 @@ export default function ReformTab({ data }) {
   // The employer-sector split exists only when the build ran on a dataset
   // with the employment_sector variable.
   const hasPublicSplit = (data.reform.static_excl_public ?? null) !== null;
+  const hasFullTime = (data.reform.static?.full_time_only ?? null) !== null;
+  const searchParams = useSearchParams();
   const [subTab, setSubTab] = useState("static");
   const [population, setPopulation] = useState("all");
   const [employer, setEmployer] = useState("all");
+  const [hours, setHours] = useState(() => {
+    const ft = searchParams?.get("ft");
+    if (ft === "30") return "ft30";
+    if (ft === "1" || ft === "35") return "ft35";
+    return "all";
+  });
   const populationView = subTab === "static" || subTab === "behavioural";
   const useTargeted = targeted !== null && population === "neet";
   const activeTargeted = useTargeted ? targeted : null;
   const excludePublic = hasPublicSplit && employer === "exclude_public";
+  const hoursCut = HOURS.find((h) => h.id === hours)?.cut ?? null;
 
   return (
     <div className="space-y-3">
@@ -950,12 +984,30 @@ export default function ReformTab({ data }) {
         </div>
       )}
 
+      {hasFullTime && subTab === "static" && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <ToggleGroupLabel>Working hours</ToggleGroupLabel>
+          <div className="flex flex-wrap items-center gap-2">
+            {HOURS.map((h) => (
+              <button
+                key={h.id}
+                className={`toggle-button ${hours === h.id ? "active" : ""}`}
+                onClick={() => setHours(h.id)}
+              >
+                {h.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {subTab === "static" && (
         <StaticView
           key={`${useTargeted ? "targeted" : "all"}-${excludePublic ? "excl" : "all"}`}
           data={data}
           targeted={activeTargeted}
           excludePublic={excludePublic}
+          hoursCut={hoursCut}
         />
       )}
       {subTab === "behavioural" && (
