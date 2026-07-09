@@ -22,11 +22,11 @@ export default function PolicyEngineHeader() {
           "linear-gradient(to right, var(--pe-color-primary-800, #234E52), var(--pe-color-primary-600, #2C7A7B))",
       }}
     >
-      <div className="mx-auto flex h-[58px] max-w-[1400px] items-center justify-between px-6 md:px-8">
+      <div className="mx-auto flex h-[58px] max-w-[1400px] items-center gap-8 px-6 md:px-8">
         <a
           href="https://policyengine.org/uk"
           aria-label="PolicyEngine UK home"
-          className="flex items-center"
+          className="flex flex-shrink-0 items-center"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
