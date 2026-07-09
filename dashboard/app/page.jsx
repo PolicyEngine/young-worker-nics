@@ -48,7 +48,9 @@ function Dashboard() {
   useEffect(() => {
     async function loadData() {
       try {
-        const response = await fetch("/data/young_worker_nics_results.json");
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/data/young_worker_nics_results.json`,
+        );
         if (!response.ok) {
           throw new Error("young_worker_nics_results.json not found; run the pipeline first");
         }
