@@ -49,3 +49,11 @@ jobs:
       - name: Build
         working-directory: dashboard
         run: bun run build
+      - name: Assert the PolicyEngine site shell is in the built HTML
+        working-directory: dashboard
+        run: |
+          html=.next/server/app/index.html
+          for needle in "PolicyEngine" ">Research<" ">Model<" ">API<" ">Donate<" "About us" "Developer tools" "Privacy policy" "Terms and conditions"; do
+            grep -qF -- "$needle" "$html" || { echo "MISSING from built HTML: $needle"; exit 1; }
+          done
+          echo "Site shell present (brand, nav labels, footer links)."
