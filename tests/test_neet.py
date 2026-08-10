@@ -212,6 +212,7 @@ def test_derive_period_raises_on_unparseable_filename():
         derive_period(["/data/panel_a.tab", "/data/panel_b.tab"])
 
 
-def test_derive_studies_raises_on_unparseable_path():
-    with pytest.raises(ValueError, match="Cannot parse the UKDA study number"):
-        derive_studies(["/data/panel_a.tab"])
+def test_derive_studies_falls_back_to_panel_names_on_unparseable_path():
+    assert derive_studies(["/data/panel_a.tab"]) == (
+        "UK Data Service LFS five-quarter longitudinal panels (panel_a)"
+    )
