@@ -1,6 +1,6 @@
 # Employer NICs exemption for young workers (18-24)
 
-**Live dashboard: [young-worker-nics.vercel.app](https://young-worker-nics.vercel.app)**
+**Live dashboard: [policyengine.org/uk/young-worker-nics](https://policyengine.org/uk/young-worker-nics)**
 
 Data pipeline and dashboard estimating the fiscal cost, distributional impact
 and employment effects of extending the employer NICs zero rate — which
