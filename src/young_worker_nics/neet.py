@@ -272,6 +272,26 @@ def _classifier_neet_probabilities(
     return _calibrate(prob, treated_mask, person_weights, target_share)
 
 
+def classifier_versions() -> dict[str, str | None]:
+    """The packages behind the classifier, for the results JSON.
+
+    Results published before the classifier recorded no microimpute version,
+    which left the release behind them to inference. ``microcosm_fit_commit``
+    comes from the install's PEP 610 record; it is None unless pip or uv
+    installed microcosm-fit from git.
+    """
+    import importlib.metadata
+    import json
+
+    record = importlib.metadata.distribution("microcosm-fit").read_text("direct_url.json")
+    commit = json.loads(record).get("vcs_info", {}).get("commit_id") if record else None
+    return {
+        "microcosm_fit": importlib.metadata.version("microcosm-fit"),
+        "microcosm_fit_commit": commit,
+        "scikit_learn": importlib.metadata.version("scikit-learn"),
+    }
+
+
 def build_neet_imputation(
     lfs_paths: list[str],
     baseline,

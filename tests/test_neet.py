@@ -14,6 +14,7 @@ from young_worker_nics.neet import (
     _classifier_neet_probabilities,
     annualise_pay,
     banded_neet_probabilities,
+    classifier_versions,
     derive_period,
     derive_studies,
     load_panels,
@@ -237,6 +238,15 @@ def test_classifier_refuses_gender_codes_the_donors_lack():
     donor, receiver, treated, weights = classifier_case()
     with pytest.raises(ValueError, match="never saw"):
         _classifier_neet_probabilities(donor, receiver.assign(gender="Male"), 0.2, treated, weights)
+
+
+def test_classifier_versions_name_the_installed_packages():
+    """The results record what ran, so a rerun needn't infer it."""
+    pytest.importorskip("microcosm.fit")
+    versions = classifier_versions()
+    assert versions["microcosm_fit"] and versions["scikit_learn"]
+    commit = versions["microcosm_fit_commit"]
+    assert commit is None or (len(commit) == 40 and set(commit) <= set("0123456789abcdef"))
 
 
 # ── load_panels weight detection ─────────────────────────────────────────────

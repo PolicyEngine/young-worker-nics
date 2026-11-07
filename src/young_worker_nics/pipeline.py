@@ -784,7 +784,7 @@ def run(args: argparse.Namespace) -> None:
     lfs_paths = args.lfs_path
     if lfs_paths:
         print("Step 8: Targeted population (employed 21-24s NEET within the past year)...")
-        from .neet import build_neet_imputation
+        from .neet import build_neet_imputation, classifier_versions
 
         person_weights = np.asarray(saving_per_person.weights, dtype=float)
         saving_values = np.asarray(saving_per_person.values, dtype=float)
@@ -1137,6 +1137,7 @@ def run(args: argparse.Namespace) -> None:
                 if getattr(args, "populace", False)
                 else ("policyengine-uk (direct)" if args.dataset else "policyengine.py (bundle)")
             ),
+            **({"targeted_imputation": classifier_versions()} if lfs_paths else {}),
         },
         "settings": {
             "pass_through_scenarios": list(args.pass_through),
