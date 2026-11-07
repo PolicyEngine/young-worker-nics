@@ -790,7 +790,7 @@ def run(args: argparse.Namespace) -> None:
         saving_values = np.asarray(saving_per_person.values, dtype=float)
         treated_values = np.asarray(marginal_mask.values, dtype=bool)
 
-        print("    building the LFS NEET imputation (QRF, calibrated)...")
+        print("    building the LFS NEET imputation (classifier, calibrated)...")
         imputation = build_neet_imputation(
             lfs_paths, baseline, YEAR, treated_values, person_weights
         )
@@ -1104,12 +1104,14 @@ def run(args: argparse.Namespace) -> None:
             "longitudinal panels (consecutive vintages follow disjoint entry cohorts, "
             "so pooling never double-counts a person). A panel member counts as a "
             "recent NEET entrant if they were NEET at any of waves 1-4 and employed at "
-            "wave 5. A quantile regression forest imputes each enhanced-FRS employee's "
-            "probability of being such an entrant from age, gender and earnings, with "
-            "the mean calibrated to the directly measured entrant share among employed "
-            "21-24 panel members. Every reform quantity then counts each employee at that "
-            "probability rather than selecting a discrete subsample; the calibrated level is "
-            "corroborated by the ONS X02 labour-market flows series."
+            "wave 5. A weighted classifier (Microcosm's CategoricalClassifier, a mix of "
+            "boosted trees and a spline logit) estimates each employee's probability of "
+            "being such an entrant from age, gender and earnings. One scaling factor then "
+            "sets the weighted mean of those probabilities among employed 21-24-year-olds "
+            "to the directly measured entrant share among employed 21-24 panel members, "
+            "capping each probability at 1. Every reform quantity then counts each employee "
+            "at that probability rather than selecting a discrete subsample; the calibrated "
+            "level is corroborated by the ONS X02 labour-market flows series."
         ),
     }
 

@@ -1,0 +1,19 @@
+{
+  "employed_21_24": 1934191.8657846749,
+  "target_share": 0.12735985884790305,
+  "published_share": 0.12182179968810114,
+  "published_vs_target": -0.04348355290198325,
+  "targeted_employees": {
+    "published": 235626.73403197527,
+    "target": 246338.40301109842,
+    "missing": 10711.668979123147,
+    "missing_vs_published": 0.04546032954677181
+  },
+  "static_cost_bn": {
+    "published": 0.7734710250670601,
+    "scenario_same_mix": 0.808633272761488,
+    "scenario_missing_spread_over_left_out": 0.81063748507925,
+    "reference_banded_sensitivity": 0.7185114439484499,
+    "reference_everyone_at_target_share": 0.8491096241355941
+  }
+}

@@ -1,23 +1,37 @@
-"""Dependency pins that a rerun of the published results relies on."""
+"""Dependency pins that a rerun of Step 8 relies on."""
 
+import re
 import tomllib
 from pathlib import Path
 
 from packaging.requirements import Requirement
-from packaging.utils import canonicalize_name
 
 PYPROJECT = Path(__file__).parent.parent / "pyproject.toml"
+MICROCOSM = ("microcosm-fit", "microcosm-frame", "microcosm-graph")
+PINNED = re.compile(
+    r"^git\+https://github\.com/PolicyEngine/microcosm@([0-9a-f]{40})"
+    r"#subdirectory=packages/([a-z-]+)$"
+)
 
 
-def _extra(name: str) -> list[Requirement]:
+def _extra(name: str) -> dict[str, Requirement]:
     project = tomllib.loads(PYPROJECT.read_text())["project"]
-    return [Requirement(spec) for spec in project["optional-dependencies"][name]]
+    reqs = [Requirement(spec) for spec in project["optional-dependencies"][name]]
+    return {req.name: req for req in reqs}
 
 
-def test_lfs_extra_pins_microimpute_exactly():
-    """Step 8 imputes with microimpute; a looser spec would resolve a newer release."""
-    pins = [req for req in _extra("lfs") if canonicalize_name(req.name) == "microimpute"]
-    assert len(pins) == 1
-    assert str(pins[0].specifier) == "==3.1.1"
-    # A marker would drop the pin on some Python versions.
-    assert pins[0].marker is None
+def test_lfs_extra_pins_microcosm_to_one_commit():
+    """Step 8 fits Microcosm's classifier; a branch or tag would move under a rerun."""
+    lfs = _extra("lfs")
+    commits = set()
+    for name in MICROCOSM:
+        match = PINNED.match(lfs[name].url or "")
+        assert match, f"{name} must install from a full commit of PolicyEngine/microcosm"
+        assert match[2] == name
+        commits.add(match[1])
+    assert len(commits) == 1
+
+
+def test_lfs_extra_drops_microimpute():
+    """Step 8 no longer calls microimpute, which PolicyEngine is archiving."""
+    assert "microimpute" not in _extra("lfs")

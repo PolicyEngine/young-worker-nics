@@ -3,15 +3,17 @@
 Estimates each employed 21-24-year-old's probability of having been NEET
 (non-employed and not enrolled as a student) at some point in the past year,
 from LFS panel members observed NEET at any of waves 1-4 and employed at
-wave 5. A QRF (microimpute) learns the shape of that probability over age,
-gender and earnings; an earnings-banded estimator provides a sensitivity.
-Both are calibrated so the FRS-weighted mean among treated employees equals
-the directly measured, survey-weighted entrant share among employed 21-24
-LFS donors: the level then rests on the LFS group rate, so dropping
-missing-pay donors cannot bias it. Caveat: the stacked panels hold only a
-few hundred employed 21-24 donors, so cell rates are noisy — the calibrated
-level is more reliable than any single band. The QRF draw is seeded via
-autoimpute's ``random_state`` (set to 0) for reproducibility.
+wave 5. A weighted classifier (microcosm-fit's CategoricalClassifier)
+learns that probability over age, gender and earnings; an earnings-banded
+estimator provides a sensitivity. Calibration scales both so the weighted
+mean among treated employees equals the directly measured, survey-weighted
+entrant share among employed 21-24 LFS donors: the level then rests on the
+LFS group rate, so dropping missing-pay donors cannot bias it. Caveat: the
+stacked panels hold only a few hundred employed 21-24 donors, so cell rates
+are noisy — the calibrated level is more reliable than any single band.
+``CLASSIFIER_SEED`` seeds the classifier's boosted learner (its spline logit
+draws nothing at random), so a rerun on the same panels and package
+versions repeats the probabilities.
 """
 
 from __future__ import annotations
@@ -40,7 +42,8 @@ def _weighted_mean(values: np.ndarray, weights: np.ndarray) -> float:
 INCAC_COLS = [f"INCAC05{q}" for q in range(1, 6)]
 ENROLL_COLS = [f"ENROLL{q}" for q in range(1, 6)]
 
-QRF_RANDOM_STATE = 0
+PREDICTORS = ["age", "gender", "employment_income"]
+CLASSIFIER_SEED = 0
 
 _PERIOD_RE = re.compile(r"5q_(jm|aj|js|od)(\d{2})_(jm|aj|js|od)(\d{2})", re.IGNORECASE)
 _STUDY_RE = re.compile(r"UKDA[-_ ](\d+)", re.IGNORECASE)
@@ -128,21 +131,80 @@ def annualise_pay(weekly_pay: np.ndarray, weeks_in_year: float) -> np.ndarray:
     return np.where(weekly_pay >= 0, weekly_pay * weeks_in_year, np.nan)
 
 
+#: Bisection steps for the calibration factor. Each step halves the bracket's
+#: log-width, so even a bracket spanning the whole float range closes to
+#: adjacent floats in about 65 steps.
+_CALIBRATION_STEPS = 200
+#: Slack for rounding when the target equals the most any factor can reach.
+_SHARE_TOLERANCE = 1e-12
+
+
 def _calibrate(
     prob: np.ndarray,
     treated_mask: np.ndarray,
     person_weights: np.ndarray,
     target_share: float,
 ) -> np.ndarray:
-    """Scale so the weighted mean probability over treated people hits the target."""
-    prob = np.where(treated_mask, prob, 0.0)
-    uncalibrated = _weighted_mean(prob[treated_mask], person_weights[treated_mask])
+    """Scale treated probabilities by one factor so their weighted mean hits the target.
+
+    Each treated person gets ``min(f * p, 1)`` for the one factor ``f`` that
+    makes the weighted mean over treated people equal ``target_share``;
+    everyone else gets 0. When no scaled probability reaches 1, ``f`` is the
+    plain ratio ``target_share / mean(p)`` and the result equals scaling and
+    clipping. When some do reach 1, clipping them alone would leave the mean
+    short of the target, so ``f`` grows until the people below 1 make up the
+    difference. The weighted mean of ``min(f * p, 1)`` rises continuously in
+    ``f``, so bisection finds it; the bisection splits the bracket at its
+    geometric midpoint, since the bracket can span many orders of magnitude.
+
+    Raises:
+        ValueError: If a treated probability lies outside [0, 1], a treated
+            weight is negative or non-finite, the treated weights sum to zero,
+            the target lies outside [0, 1], the probabilities are zero across
+            the treated population, or the target exceeds the weighted share of
+            treated people with a nonzero probability (the most any factor
+            reaches). The last one means the imputation returned too few
+            nonzero values, as 0/1 class labels do.
+    """
+    treated_mask = np.asarray(treated_mask, dtype=bool)
+    prob = np.where(treated_mask, np.asarray(prob, dtype=float), 0.0)
+    p = prob[treated_mask]
+    w = np.asarray(person_weights, dtype=float)[treated_mask]
+    if not (np.isfinite(p).all() and (p >= 0).all() and (p <= 1).all()):
+        raise ValueError("Imputed probabilities must lie in [0, 1] for treated people.")
+    if not (np.isfinite(w).all() and (w >= 0).all() and w.sum() > 0):
+        raise ValueError("Treated person weights must be finite, non-negative and not all zero.")
+    if not 0.0 <= target_share <= 1.0:
+        raise ValueError(f"The target share must lie in [0, 1], not {target_share}.")
+    uncalibrated = _weighted_mean(p, w)
     if uncalibrated <= 0:
         raise ValueError(
             "Imputed probabilities are zero across the treated population; "
             "cannot calibrate to the measured entrant share."
         )
-    return np.clip(prob * (target_share / uncalibrated), 0.0, 1.0)
+    factor = target_share / uncalibrated
+    if factor * p.max() <= 1.0:
+        return prob * factor
+
+    reachable = _weighted_mean((p > 0).astype(float), w)
+    if target_share > reachable + _SHARE_TOLERANCE:
+        raise ValueError(
+            f"No scaling of the imputed probabilities reaches the target share "
+            f"{target_share:.6f}: only {reachable:.6f} of the treated weight has a "
+            "nonzero probability. 0/1 class labels in place of probabilities do this."
+        )
+    # The weighted mean sits below the target at ``low`` (the clip binds there)
+    # and reaches every reachable share at ``high`` (every nonzero p at 1).
+    low, high = factor, 1.0 / p[p > 0].min()
+    for _ in range(_CALIBRATION_STEPS):
+        middle = float(np.sqrt(low) * np.sqrt(high))
+        if middle <= low or middle >= high:
+            break
+        if _weighted_mean(np.minimum(middle * p, 1.0), w) < target_share:
+            low = middle
+        else:
+            high = middle
+    return np.minimum(prob * high, 1.0)
 
 
 def banded_neet_probabilities(
@@ -179,27 +241,34 @@ def banded_neet_probabilities(
     return _calibrate(prob, treated_mask, person_weights, target_share)
 
 
-def _qrf_neet_probabilities(
+def _classifier_neet_probabilities(
     donor: pd.DataFrame,
     receiver: pd.DataFrame,
     target_share: float,
     treated_mask: np.ndarray,
     person_weights: np.ndarray,
 ) -> np.ndarray:
-    """QRF (microimpute) variant: shape from age/gender/earnings, level calibrated."""
-    from microimpute import QRF
-    from microimpute.comparisons import autoimpute
+    """Classifier variant: P(entrant | age, gender, earnings), level calibrated.
 
-    results = autoimpute(
-        donor,
-        receiver,
-        predictors=["age", "gender", "employment_income"],
-        imputed_variables=["was_neet_recently"],
-        weight_col="weight",
-        models=[QRF],
-        random_state=QRF_RANDOM_STATE,
+    microcosm-fit's CategoricalClassifier gives every receiver a probability
+    rather than a 0/1 label, so calibration can scale it to the target share.
+    The fit takes the donor weights normalised to mean 1. The classifier's
+    logit half normalises them that way itself, but its boosted half
+    (scikit-learn's HistGradientBoostingClassifier) uses them as given: each
+    leaf value divides a weighted gradient sum by a weighted hessian sum plus a
+    fixed L2 penalty, so the penalty counts for less the larger the weights.
+    Normalising makes the probabilities independent of the weights' scale.
+    """
+    from microcosm.fit import CategoricalClassifier
+
+    weights = donor["weight"].to_numpy(dtype=float)
+    model = CategoricalClassifier(categorical_predictors=("gender",), seed=CLASSIFIER_SEED).fit(
+        donor, PREDICTORS, ["was_neet_recently"], weights=weights / weights.mean()
     )
-    prob = results.receiver_data["was_neet_recently"].clip(0, 1).to_numpy()
+    classes = model.classes_.tolist()
+    if True not in classes:
+        raise ValueError("The LFS donors hold no recent NEET entrants; nothing to impute.")
+    prob = model.predict_proba(receiver[PREDICTORS])[:, classes.index(True)]
     return _calibrate(prob, treated_mask, person_weights, target_share)
 
 
@@ -228,7 +297,7 @@ def build_neet_imputation(
     young_donors = employed_w5 & (age5 >= MARGINAL_AGE_LOWER) & (age5 <= REFORM_AGE_UPPER)
     entrant_share = _weighted_mean(was_neet[young_donors], weights[young_donors])
 
-    qrf_donors = (
+    model_donors = (
         employed_w5
         & (age5 >= LFS_ADULT_AGE_FLOOR)
         & (age5 < WORKING_AGE_CEILING)
@@ -236,16 +305,18 @@ def build_neet_imputation(
     )
     donor = pd.DataFrame(
         {
-            "age": age5[qrf_donors],
-            "gender": panel.SEX[qrf_donors].astype(int).map({1: "MALE", 2: "FEMALE"}).values,
-            "employment_income": annual_pay[qrf_donors],
-            "was_neet_recently": was_neet[qrf_donors].astype(float),
-            "weight": weights[qrf_donors],
+            "age": age5[model_donors],
+            "gender": panel.SEX[model_donors].astype(int).map({1: "MALE", 2: "FEMALE"}).values,
+            "employment_income": annual_pay[model_donors],
+            "was_neet_recently": was_neet[model_donors],
+            "weight": weights[model_donors],
         }
     )
-    receiver = baseline.calculate_dataframe(["age", "gender", "employment_income"], year)
+    simulated = baseline.calculate_dataframe(PREDICTORS, year)
+    # Plain columns, so the classifier sees values rather than a weighted frame.
+    receiver = pd.DataFrame({column: np.asarray(simulated[column]) for column in PREDICTORS})
 
-    probabilities = _qrf_neet_probabilities(
+    probabilities = _classifier_neet_probabilities(
         donor, receiver, entrant_share, treated_mask, person_weights
     )
     banded_probabilities = banded_neet_probabilities(
@@ -265,8 +336,10 @@ def build_neet_imputation(
         "total_respondents": int(len(lfs)),
         "employed_21_24_donors": int(young_donors.sum()),
         "neet_entrants_21_24": int(was_neet[young_donors].sum()),
-        "qrf_training_donors": int(qrf_donors.sum()),
-        "qrf_training_positives": int(was_neet[qrf_donors].sum()),
+        # The published results name these keys after the QRF; they keep the
+        # names so the results schema doesn't change.
+        "qrf_training_donors": int(model_donors.sum()),
+        "qrf_training_positives": int(was_neet[model_donors].sum()),
     }
     return NeetImputation(
         probabilities=probabilities,
