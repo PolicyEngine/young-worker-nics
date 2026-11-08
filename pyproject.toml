@@ -38,8 +38,8 @@ lfs = [
   # version. This repo dates from 2026-06-11, and 3.1.1 was the newest
   # release from 2026-06-06 to 2026-09-21, so any install for it before
   # then got 3.1.1. The exact pin keeps a rerun on that release rather
-  # than the newest one: PolicyEngine is archiving microimpute, and PyPI
-  # keeps 3.1.1 installable.
+  # than the newest one, 3.4.1. PolicyEngine archived microimpute on
+  # 2026-11-08, and PyPI keeps 3.1.1 installable.
   "microimpute==3.1.1",
 ]
 dev = [
