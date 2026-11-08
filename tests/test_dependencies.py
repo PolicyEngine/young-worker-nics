@@ -33,5 +33,5 @@ def test_lfs_extra_pins_microcosm_to_one_commit():
 
 
 def test_lfs_extra_drops_microimpute():
-    """Step 8 no longer calls microimpute, which PolicyEngine is archiving."""
+    """Step 8 no longer calls microimpute, which PolicyEngine archived on 2026-11-08."""
     assert "microimpute" not in _extra("lfs")
