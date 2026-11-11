@@ -4,6 +4,7 @@ import tomllib
 from pathlib import Path
 
 from packaging.requirements import Requirement
+from packaging.utils import canonicalize_name
 
 PYPROJECT = Path(__file__).parent.parent / "pyproject.toml"
 
@@ -15,6 +16,8 @@ def _extra(name: str) -> list[Requirement]:
 
 def test_lfs_extra_pins_microimpute_exactly():
     """Step 8 imputes with microimpute; a looser spec would resolve a newer release."""
-    pins = [req for req in _extra("lfs") if req.name == "microimpute"]
+    pins = [req for req in _extra("lfs") if canonicalize_name(req.name) == "microimpute"]
     assert len(pins) == 1
     assert str(pins[0].specifier) == "==3.1.1"
+    # A marker would drop the pin on some Python versions.
+    assert pins[0].marker is None
