@@ -36,8 +36,9 @@ lfs = [
   # Step 8 (--lfs-path): the targeted recent-NEET imputation in neet.py fits
   # Microcosm's CategoricalClassifier. Microcosm doesn't publish to PyPI, so
   # all three packages come from one pinned commit of PolicyEngine/microcosm.
-  # (Results published before this change used microimpute 3.1.1; see
-  # analysis/calibration-shortfall/.)
+  # (Results published before this change record no microimpute version; a
+  # fresh install when they ran would have got 3.1.1, which
+  # analysis/calibration-shortfall/ runs the published call under.)
   "microcosm-fit @ git+https://github.com/PolicyEngine/microcosm@dc00d158fe429b188c5066db99e7ede94f79cfdf#subdirectory=packages/microcosm-fit",
   "microcosm-frame @ git+https://github.com/PolicyEngine/microcosm@dc00d158fe429b188c5066db99e7ede94f79cfdf#subdirectory=packages/microcosm-frame",
   "microcosm-graph @ git+https://github.com/PolicyEngine/microcosm@dc00d158fe429b188c5066db99e7ede94f79cfdf#subdirectory=packages/microcosm-graph",

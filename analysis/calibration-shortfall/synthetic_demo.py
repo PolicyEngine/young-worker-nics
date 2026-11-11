@@ -5,7 +5,7 @@ scales it so the weighted mean over employed 21-24-year-olds equals the
 entrant share measured in the LFS. This script builds synthetic LFS-like
 donors and FRS-like receivers and runs three versions of that step:
 
-A. The published code (commit c9b619d): microimpute 3.1.1's
+A. The published code (neet.py as of 30f5b65): microimpute 3.1.1's
    ``autoimpute(..., models=[QRF])`` on the float 0/1 target, then the
    published scale-then-clip formula.
 B. The published formula's natural repair, solving for one factor under the
@@ -87,14 +87,14 @@ def synthetic_receivers(rng: np.random.Generator, n: int = 40_000) -> pd.DataFra
 
 
 def published_formula(prob, treated, weights, target_share):
-    """Step 8's calibration as published (c9b619d): scale by target / mean, then clip."""
+    """Step 8's calibration as published (30f5b65): scale by target / mean, then clip."""
     prob = np.where(treated, prob, 0.0)
     uncalibrated = _weighted_mean(prob[treated], weights[treated])
     return np.clip(prob * (target_share / uncalibrated), 0.0, 1.0)
 
 
 def published_imputation(donor, receiver):
-    """Step 8's imputation call as published (c9b619d), on microimpute 3.1.1."""
+    """Step 8's imputation call as published (30f5b65), on microimpute 3.1.1."""
     from importlib.metadata import version
 
     from microimpute import QRF

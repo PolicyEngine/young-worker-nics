@@ -72,7 +72,7 @@ def weighted_gap(a, b, treated, weights):
 
 
 def published_formula(prob, treated, weights, target):
-    """Step 8's calibration as published (c9b619d), copied verbatim."""
+    """Step 8's calibration as published (30f5b65), copied verbatim."""
     prob = np.where(treated, prob, 0.0)
     uncalibrated = _weighted_mean(prob[treated], weights[treated])
     return np.clip(prob * (target / uncalibrated), 0.0, 1.0)

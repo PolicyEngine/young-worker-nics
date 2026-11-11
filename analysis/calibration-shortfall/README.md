@@ -22,7 +22,7 @@ targeted employees than the results publish.
 
 ## Why
 
-Step 8 (commit c9b619d) passes a float 0/1 target, `was_neet_recently`, to
+Step 8 (`neet.py` as of 30f5b65, unchanged until this PR) passes a float 0/1 target, `was_neet_recently`, to
 microimpute's `autoimpute(..., models=[QRF])`. For a 0/1 target, microimpute
 fits a random-forest classifier and writes each receiver's predicted class,
 0 or 1, into `receiver_data`; this call returns no probabilities. `_calibrate` then
@@ -105,8 +105,11 @@ On the weights:
   as well: root-mean-square error 0.0154 (sd 0.0013) against 0.0161 (sd 0.0017)
   on raw weights.
 
-microimpute 1.15.1, which nics-exemption-inactive-employees pins, also
-returns only 0 and 1 for this call. Also, microimpute 3.1.1 reports
+microimpute 1.15.1 also returns only 0 and 1 for this call
+(`synthetic_demo_output_microimpute_1.15.1.json`), with a label share of
+3.06% against 2.70% under 3.1.1. Releases before 2.0.3 resample the donors by
+weight and fit the forest unweighted, while later ones pass the weights to the
+forest, so the two label sets differ. Also, microimpute 3.1.1 reports
 `microimpute.__version__` as 1.1.2, so read its version from the package
 metadata.
 
@@ -116,9 +119,15 @@ metadata.
 python analysis/calibration-shortfall/published_shortfall.py
 uv pip install -e ".[lfs,dev]" "microimpute==3.1.1"
 python analysis/calibration-shortfall/synthetic_demo.py
+
+# Part A under microimpute 1.15.1, installed alone ahead of the environment
+uv pip install --target "$TMPDIR/mi-1.15.1" --no-deps "microimpute==1.15.1"
+PYTHONPATH="$TMPDIR/mi-1.15.1" python analysis/calibration-shortfall/synthetic_demo.py
 ```
 
 The demo's output came from Python 3.14 with microimpute 3.1.1,
 scikit-learn 1.8.0, quantile-forest 1.4.2 and microcosm-fit at dc00d158. uv
 installed the PyPI packages with `--exclude-newer 2026-06-22`, two days after
-the published run.
+the 2026-06-20 run (6b579b4) behind the published targeted count. The 1.15.1
+output came from the same environment with only microimpute swapped; every
+section that doesn't call microimpute matches the 3.1.1 output exactly.

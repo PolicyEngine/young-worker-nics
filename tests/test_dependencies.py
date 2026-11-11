@@ -5,6 +5,7 @@ import tomllib
 from pathlib import Path
 
 from packaging.requirements import Requirement
+from packaging.utils import canonicalize_name
 
 PYPROJECT = Path(__file__).parent.parent / "pyproject.toml"
 MICROCOSM = ("microcosm-fit", "microcosm-frame", "microcosm-graph")
@@ -17,7 +18,7 @@ PINNED = re.compile(
 def _extra(name: str) -> dict[str, Requirement]:
     project = tomllib.loads(PYPROJECT.read_text())["project"]
     reqs = [Requirement(spec) for spec in project["optional-dependencies"][name]]
-    return {req.name: req for req in reqs}
+    return {canonicalize_name(req.name): req for req in reqs}
 
 
 def test_lfs_extra_pins_microcosm_to_one_commit():
