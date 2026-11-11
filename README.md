@@ -103,6 +103,18 @@ python -m young_worker_nics \
 Outputs `data/young_worker_nics_results.json` and a copy under
 `dashboard/public/data/` for the dashboard.
 
+The targeted recent-NEET variant (Step 8) runs only when you pass
+`--lfs-path` with the UK Data Service LFS five-quarter panels, which the
+licence keeps out of this repo. It also needs the `lfs` extra, which pins
+microimpute to 3.1.1, the newest release from 2026-06-06 to 2026-09-21
+and so the one a fresh install got when the study ran (the results don't
+record the version; `pyproject.toml` explains the pin):
+
+```bash
+uv pip install -e ".[simulation,lfs,dev]"
+python -m young_worker_nics --year 2027 --populace --lfs-path data/lfs/*.tab
+```
+
 ## Dashboard
 
 ```bash
