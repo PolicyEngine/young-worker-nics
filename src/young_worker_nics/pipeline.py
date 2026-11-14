@@ -299,7 +299,7 @@ def run(args: argparse.Namespace) -> None:
         populace_year = getattr(args, "populace_year", 2023)
         populace_source = f"populace_uk_{populace_year}"
         print(
-            f"    Populace UK {populace_year} via policyengine.py "
+            f"    Microcosm UK {populace_year} via policyengine.py "
             f"(managed dataset {populace_source!r})"
         )
 
@@ -1110,8 +1110,7 @@ def run(args: argparse.Namespace) -> None:
             "sets the weighted mean of those probabilities among employed 21-24-year-olds "
             "to the directly measured entrant share among employed 21-24 panel members, "
             "capping each probability at 1. Every reform quantity then counts each employee "
-            "at that probability rather than selecting a discrete subsample; the calibrated "
-            "level is corroborated by the ONS X02 labour-market flows series."
+            "at that probability rather than selecting a discrete subsample."
         ),
     }
 

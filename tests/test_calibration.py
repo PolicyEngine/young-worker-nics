@@ -21,10 +21,11 @@ and rounding can move a low-weight person's output by more than one ulp. So
 those tests bound the weighted mean difference over treated people, the
 quantity every published figure sums.
 
-The generated probabilities and targets are 0, 1 or at least 1e-12, and the
-weights 0 or at least 1e-6, so no product or weighted mean underflows; real
-inputs sit far from that range. ``test_a_tiny_probability_does_not_stall_the_search``
-covers an extreme bracket by hand.
+The main strategy draws probabilities and targets of 0, 1 or at least 1e-12,
+and weights of 0 or at least 1e-6, so no product or weighted mean underflows;
+real inputs sit far from that range. ``test_tiny_probabilities_stay_finite_and_hit_the_target``
+adds probabilities down to the smallest subnormal float and checks invariants
+1 and 2, and the examples at the end cover extreme brackets by hand.
 """
 
 import numpy as np
@@ -152,6 +153,34 @@ def test_monotone_in_target(inputs, other_target):
     assert weighted_gap(shortfall, np.zeros_like(shortfall), treated, weights) <= WEIGHTED_TOLERANCE
 
 
+tiny_probabilities = st.one_of(probabilities, st.floats(5e-324, 1e-300))
+
+
+@st.composite
+def tiny_calibration_inputs(draw):
+    n = draw(st.integers(1, 40))
+    prob = np.array(draw(st.lists(tiny_probabilities, min_size=n, max_size=n)))
+    weights = np.array(draw(st.lists(person_weights, min_size=n, max_size=n)))
+    treated = np.array(draw(st.lists(st.booleans(), min_size=n, max_size=n)))
+    assume(weights[treated].sum() > 0)
+    assume(reachable_share(prob, treated, weights) > 0)
+    target = draw(shares)
+    return prob, treated, weights, target
+
+
+@settings(max_examples=400, deadline=None)
+@given(tiny_calibration_inputs())
+def test_tiny_probabilities_stay_finite_and_hit_the_target(inputs):
+    prob, treated, weights, target = inputs
+    out = calibrate_or_none(prob, treated, weights, target)
+    if out is None:
+        return
+    assert np.isfinite(out).all()
+    assert ((out >= 0) & (out <= 1)).all()
+    assert (out[~treated] == 0).all()
+    assert abs(weighted_share(out, treated, weights) - target) <= SHARE_TOLERANCE
+
+
 @settings(max_examples=400, deadline=None)
 @given(calibration_inputs())
 def test_matches_published_formula_where_the_clip_never_binds(inputs):
@@ -222,3 +251,25 @@ def test_a_tiny_probability_does_not_stall_the_search():
     assert out[:2] == pytest.approx([1.0, 1.0])
     # The factor is 1 / 0.3, so the tiny probability scales by that and no more.
     assert out[2] / prob[2] == pytest.approx(1 / 0.3, rel=1e-9)
+
+
+def test_a_subnormal_probability_leaves_everyone_finite():
+    """1 / 1e-310 overflows a float, so the bracket can't start from it."""
+    prob = np.array([0.9, 0.3, 1e-310, 0.0])
+    treated = np.array([True, True, True, False])
+    out = _calibrate(prob, treated, np.ones(4), 0.5)
+    assert np.isfinite(out).all()
+    assert out[3] == 0
+    # A factor of 5/3 caps the first person and puts the treated mean at 0.5.
+    assert out[:2] == pytest.approx([1.0, 0.5])
+    assert out[:3].mean() == pytest.approx(0.5, abs=1e-12)
+    assert out[2] / prob[2] == pytest.approx(5 / 3, rel=1e-9)
+
+
+def test_a_factor_beyond_the_largest_float():
+    """Subnormal probabilities can need a factor no float holds."""
+    prob = np.array([1e-310, 2e-310, 0.0])
+    treated = np.array([True, True, False])
+    out = _calibrate(prob, treated, np.ones(3), 0.5)
+    # The factor, 0.5 / 1.5e-310, exceeds 1.8e308; nobody reaches 1.
+    assert out == pytest.approx([1 / 3, 2 / 3, 0.0], rel=1e-9)

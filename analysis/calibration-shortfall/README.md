@@ -32,7 +32,7 @@ every 1 to 1, and the share stays where the labels left it: 12.18% in the
 published run.
 
 An earlier run (e015103, 2026-06-12, before 6b579b4 added the Microcosm
-backend) made the same call and hit its target to within 2e-17. Its labels
+backend) made the same call and hit its target to within 3e-17. Its labels
 overshot the target, so the factor fell below 1 and nothing clipped. That run
 still counted a discrete subsample (every employee labelled 1, each at the
 same fraction), where the methods text describes a probability for each

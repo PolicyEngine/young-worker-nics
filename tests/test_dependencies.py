@@ -29,6 +29,8 @@ def test_lfs_extra_pins_microcosm_to_one_commit():
         match = PINNED.match(lfs[name].url or "")
         assert match, f"{name} must install from a full commit of PolicyEngine/microcosm"
         assert match[2] == name
+        # A marker would skip the install on some Python versions.
+        assert lfs[name].marker is None, f"{name} must install on every Python version"
         commits.add(match[1])
     assert len(commits) == 1
 
