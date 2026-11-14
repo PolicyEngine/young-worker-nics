@@ -1,8 +1,9 @@
 """Unit tests for the NEET imputation logic (pure pandas/numpy, no microdata).
 
-The QRF path needs microimpute and a PolicyEngine baseline, so it is not
-exercised here; the transition-target, sentinel, banded-estimator and
-panel-loading logic are all testable on synthetic data.
+The transition-target, sentinel, banded-estimator, classifier and
+panel-loading logic are all testable on synthetic data. The classifier tests
+need Microcosm (the ``lfs`` extra) and skip without it; the full Step 8 path
+also needs a PolicyEngine baseline and the LFS panels, so no test runs it.
 """
 
 import numpy as np
@@ -10,8 +11,10 @@ import pandas as pd
 import pytest
 
 from young_worker_nics.neet import (
+    _classifier_neet_probabilities,
     annualise_pay,
     banded_neet_probabilities,
+    classifier_versions,
     derive_period,
     derive_studies,
     load_panels,
@@ -160,6 +163,90 @@ def test_banded_estimator_calibration_respects_person_weights():
         donor_pay, donor_neet, donor_w, target, income, treated, weights
     )
     assert np.isclose(np.average(prob, weights=weights), target)
+
+
+# ── Classifier ───────────────────────────────────────────────────────────────
+
+
+def classifier_case(seed: int = 0, n_donor: int = 800, n_receiver: int = 400):
+    """Synthetic donors with a known age and pay gradient, and receivers to score."""
+    rng = np.random.default_rng(seed)
+    age = rng.integers(16, 65, n_donor).astype(float)
+    pay = rng.lognormal(10, 0.5, n_donor)
+    logit = -2.0 - 0.08 * (age - 30) - 0.5 * (np.log(pay) - 10)
+    donor = pd.DataFrame(
+        {
+            "age": age,
+            "gender": rng.choice(["MALE", "FEMALE"], n_donor),
+            "employment_income": pay,
+            "was_neet_recently": rng.random(n_donor) < 1 / (1 + np.exp(-logit)),
+            "weight": rng.lognormal(np.log(300), 0.4, n_donor),
+        }
+    )
+    receiver = pd.DataFrame(
+        {
+            "age": rng.integers(16, 30, n_receiver).astype(float),
+            "gender": rng.choice(["MALE", "FEMALE"], n_receiver),
+            "employment_income": rng.lognormal(10, 0.5, n_receiver),
+        }
+    )
+    treated = ((receiver["age"] >= 21) & (receiver["age"] <= 24)).to_numpy()
+    weights = rng.lognormal(np.log(500), 0.3, n_receiver)
+    return donor, receiver, treated, weights
+
+
+def test_classifier_gives_probabilities_that_hit_the_target():
+    pytest.importorskip("microcosm.fit")
+    donor, receiver, treated, weights = classifier_case()
+    prob = _classifier_neet_probabilities(donor, receiver, 0.2, treated, weights)
+    assert (prob[~treated] == 0).all()
+    assert ((prob >= 0) & (prob <= 1)).all()
+    # Probabilities, not the 0/1 labels behind the published shortfall.
+    assert len(np.unique(prob[treated])) > 10
+    assert np.average(prob[treated], weights=weights[treated]) == pytest.approx(0.2, abs=1e-9)
+
+
+def test_classifier_ignores_the_scale_of_donor_weights():
+    pytest.importorskip("microcosm.fit")
+    donor, receiver, treated, weights = classifier_case()
+    base = _classifier_neet_probabilities(donor, receiver, 0.2, treated, weights)
+    scaled = donor.assign(weight=donor["weight"] * 1000)
+    rescaled = _classifier_neet_probabilities(scaled, receiver, 0.2, treated, weights)
+    assert np.allclose(rescaled, base, rtol=1e-9, atol=1e-12)
+
+
+def test_classifier_repeats_its_probabilities():
+    pytest.importorskip("microcosm.fit")
+    donor, receiver, treated, weights = classifier_case()
+    first = _classifier_neet_probabilities(donor, receiver, 0.2, treated, weights)
+    second = _classifier_neet_probabilities(donor, receiver, 0.2, treated, weights)
+    assert np.array_equal(first, second)
+
+
+def test_classifier_refuses_donors_without_entrants():
+    pytest.importorskip("microcosm.fit")
+    donor, receiver, treated, weights = classifier_case()
+    with pytest.raises(ValueError, match="no recent NEET entrants"):
+        _classifier_neet_probabilities(
+            donor.assign(was_neet_recently=False), receiver, 0.2, treated, weights
+        )
+
+
+def test_classifier_refuses_gender_codes_the_donors_lack():
+    """A receiver coded "Male" against donors coded "MALE" fails loudly."""
+    pytest.importorskip("microcosm.fit")
+    donor, receiver, treated, weights = classifier_case()
+    with pytest.raises(ValueError, match="never saw"):
+        _classifier_neet_probabilities(donor, receiver.assign(gender="Male"), 0.2, treated, weights)
+
+
+def test_classifier_versions_name_the_installed_packages():
+    """The results record what ran, so a rerun needn't infer it."""
+    pytest.importorskip("microcosm.fit")
+    versions = classifier_versions()
+    assert versions["microcosm_fit"] and versions["scikit_learn"]
+    commit = versions["microcosm_fit_commit"]
+    assert commit is None or (len(commit) == 40 and set(commit) <= set("0123456789abcdef"))
 
 
 # ── load_panels weight detection ─────────────────────────────────────────────

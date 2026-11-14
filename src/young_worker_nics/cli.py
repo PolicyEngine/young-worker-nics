@@ -49,7 +49,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help=(
             "Build BOTH baseline and reform simulations through the "
-            "policyengine.py wrapper on the Populace UK dataset (via "
+            "policyengine.py wrapper on the Microcosm UK dataset (via "
             "managed_microsimulation with allow_unmanaged=True), instead of "
             "the enhanced-FRS direct path. Provides employment_sector, so the "
             "public/private employer split is produced. Mutually exclusive "
@@ -60,7 +60,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--populace-year",
         type=int,
         default=2023,
-        help="Populace UK dataset vintage to load when --populace is set (default 2023).",
+        help="Microcosm UK dataset vintage to load when --populace is set (default 2023).",
     )
     parser.add_argument(
         "--pass-through",

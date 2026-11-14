@@ -33,17 +33,18 @@ simulation = [
   "policyengine[uk]>=4.11.0",
 ]
 lfs = [
-  # Step 8 (--lfs-path): the targeted recent-NEET imputation in neet.py.
-  # Step 8 first ran on 2026-06-12 (e015103), and the published results
-  # were last regenerated on 2026-06-24 (30f5b65); the results record no
-  # microimpute version. 3.1.1 was the newest release from 2026-06-06 to
-  # 2026-09-21, so a fresh install for this repo in that window got 3.1.1.
-  # The exact pin keeps a rerun on that release rather than the newest
-  # one, 3.4.1. PolicyEngine archived microimpute on 2026-11-08, and PyPI
-  # keeps 3.1.1 installable.
-  "microimpute==3.1.1",
+  # Step 8 (--lfs-path): the targeted recent-NEET imputation in neet.py fits
+  # Microcosm's CategoricalClassifier. Microcosm doesn't publish to PyPI, so
+  # all three packages come from one pinned commit of PolicyEngine/microcosm.
+  # (Results published before this change record no microimpute version; a
+  # fresh install when they ran would have got 3.1.1, which
+  # analysis/calibration-shortfall/ runs the published call under.)
+  "microcosm-fit @ git+https://github.com/PolicyEngine/microcosm@dc00d158fe429b188c5066db99e7ede94f79cfdf#subdirectory=packages/microcosm-fit",
+  "microcosm-frame @ git+https://github.com/PolicyEngine/microcosm@dc00d158fe429b188c5066db99e7ede94f79cfdf#subdirectory=packages/microcosm-frame",
+  "microcosm-graph @ git+https://github.com/PolicyEngine/microcosm@dc00d158fe429b188c5066db99e7ede94f79cfdf#subdirectory=packages/microcosm-graph",
 ]
 dev = [
+  "hypothesis>=6",
   "packaging",
   "pytest>=8.0",
   "ruff>=0.6",
@@ -55,6 +56,10 @@ young-worker-nics-build = "young_worker_nics.cli:main"
 [project.urls]
 Homepage = "https://github.com/PolicyEngine/young-worker-nics"
 Repository = "https://github.com/PolicyEngine/young-worker-nics"
+
+[tool.hatch.metadata]
+# The lfs extra installs Microcosm from a pinned git commit.
+allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/young_worker_nics"]

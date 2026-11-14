@@ -299,7 +299,7 @@ def run(args: argparse.Namespace) -> None:
         populace_year = getattr(args, "populace_year", 2023)
         populace_source = f"populace_uk_{populace_year}"
         print(
-            f"    Populace UK {populace_year} via policyengine.py "
+            f"    Microcosm UK {populace_year} via policyengine.py "
             f"(managed dataset {populace_source!r})"
         )
 
@@ -784,13 +784,13 @@ def run(args: argparse.Namespace) -> None:
     lfs_paths = args.lfs_path
     if lfs_paths:
         print("Step 8: Targeted population (employed 21-24s NEET within the past year)...")
-        from .neet import build_neet_imputation
+        from .neet import build_neet_imputation, classifier_versions
 
         person_weights = np.asarray(saving_per_person.weights, dtype=float)
         saving_values = np.asarray(saving_per_person.values, dtype=float)
         treated_values = np.asarray(marginal_mask.values, dtype=bool)
 
-        print("    building the LFS NEET imputation (QRF, calibrated)...")
+        print("    building the LFS NEET imputation (classifier, calibrated)...")
         imputation = build_neet_imputation(
             lfs_paths, baseline, YEAR, treated_values, person_weights
         )
@@ -1104,12 +1104,13 @@ def run(args: argparse.Namespace) -> None:
             "longitudinal panels (consecutive vintages follow disjoint entry cohorts, "
             "so pooling never double-counts a person). A panel member counts as a "
             "recent NEET entrant if they were NEET at any of waves 1-4 and employed at "
-            "wave 5. A quantile regression forest imputes each enhanced-FRS employee's "
-            "probability of being such an entrant from age, gender and earnings, with "
-            "the mean calibrated to the directly measured entrant share among employed "
-            "21-24 panel members. Every reform quantity then counts each employee at that "
-            "probability rather than selecting a discrete subsample; the calibrated level is "
-            "corroborated by the ONS X02 labour-market flows series."
+            "wave 5. A weighted classifier (Microcosm's CategoricalClassifier, a mix of "
+            "boosted trees and a spline logit) estimates each employee's probability of "
+            "being such an entrant from age, gender and earnings. One scaling factor then "
+            "sets the weighted mean of those probabilities among employed 21-24-year-olds "
+            "to the directly measured entrant share among employed 21-24 panel members, "
+            "capping each probability at 1. Every reform quantity then counts each employee "
+            "at that probability rather than selecting a discrete subsample."
         ),
     }
 
@@ -1135,6 +1136,7 @@ def run(args: argparse.Namespace) -> None:
                 if getattr(args, "populace", False)
                 else ("policyengine-uk (direct)" if args.dataset else "policyengine.py (bundle)")
             ),
+            **({"targeted_imputation": classifier_versions()} if lfs_paths else {}),
         },
         "settings": {
             "pass_through_scenarios": list(args.pass_through),
