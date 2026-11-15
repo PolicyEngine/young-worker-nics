@@ -1,0 +1,39 @@
+{
+  "donors": 6256,
+  "donor_entrants": 186,
+  "treated_receivers": 1043,
+  "target_share": 0.05977009051587088,
+  "A_published": {
+    "microimpute": "3.1.1",
+    "distinct_imputed_values": [
+      0.0,
+      1.0
+    ],
+    "share_before_calibration": 0.02695963332850566,
+    "share_after_calibration": 0.02695963332850566,
+    "shortfall_vs_target": -0.5489444118986735
+  },
+  "B_solved_on_labels": "refused: No scaling of the imputed probabilities reaches the target share 0.059770: only 0.026960 of the treated weight has a nonzero probability. 0/1 class labels in place of probabilities do this.",
+  "C_fix": {
+    "distinct_values_among_treated": 1043,
+    "share_after_calibration": 0.05977009051587088,
+    "gap_vs_target": 0.0,
+    "treated_at_probability_1": 0
+  },
+  "weight_scale": {
+    "max_change_when_every_donor_weight_grows_1000x": {
+      "weights as given": 0.008020168474142067,
+      "weights normalised to mean 1 (the fix)": 3.3306690738754696e-16
+    },
+    "rmse_vs_true_probability_over_5_draws": {
+      "weights as given": {
+        "mean": 0.0160535895425871,
+        "sd": 0.0017070697149707916
+      },
+      "weights normalised to mean 1": {
+        "mean": 0.01542689000015618,
+        "sd": 0.0013404206850876803
+      }
+    }
+  }
+}

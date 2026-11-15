@@ -31,7 +31,7 @@ jobs:
       - name: Create venv and install
         run: |
           uv venv --python ${{ matrix.python-version }} .venv
-          uv pip install --python .venv/bin/python -e .[dev]
+          uv pip install --python .venv/bin/python -e ".[dev,lfs]"
       - name: Pytest
         run: .venv/bin/pytest tests/ -v
 

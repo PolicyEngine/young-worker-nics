@@ -363,7 +363,7 @@ function StaticView({ data, targeted, excludePublic, hoursCut }) {
                   21-24-year-olds were NEET at some point in the previous year.
                 </>
               )}{" "}
-              A quantile random forest trained on those members and calibrated
+              A weighted classifier trained on those members and calibrated
               to that share gives every employed 21-24-year-old their own
               probability of being such a recent entrant, from age, sex and
               earnings. Every figure above counts each employee at that
