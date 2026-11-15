@@ -11,7 +11,8 @@ Invariants, for every input the function accepts:
 5. Rescaling every weight by one constant leaves the output unchanged.
 6. Calibrating an already-calibrated vector returns it.
 7. A higher target never lowers anyone's output.
-8. Differential: where no scaled probability reaches 1, the output equals
+8. Differential: where no scaled probability reaches 1 and the weighted
+   mean and the weighted sum behind it are normal floats, the output equals
    the published scale-then-clip formula bit for bit, so a run the clip
    never touched reproduces exactly.
 
@@ -233,6 +234,7 @@ def test_downward_calibration_matches_scaling():
         ([0.5, np.nan], [1.0, 1.0], 0.1, r"\[0, 1\]"),
         ([0.5, 0.5], [1.0, -1.0], 0.1, "weights"),
         ([0.5, 0.5], [0.0, 0.0], 0.1, "weights"),
+        ([0.5, 0.6], [1e308, 1e308], 0.3, "weights"),
         ([0.5, 0.5], [1.0, 1.0], 1.5, "target share"),
     ],
 )
@@ -273,3 +275,32 @@ def test_a_factor_beyond_the_largest_float():
     out = _calibrate(prob, treated, np.ones(3), 0.5)
     # The factor, 0.5 / 1.5e-310, exceeds 1.8e308; nobody reaches 1.
     assert out == pytest.approx([1 / 3, 2 / 3, 0.0], rel=1e-9)
+
+
+def test_a_zero_target_gives_zeros_when_the_mean_is_subnormal():
+    prob = np.array([1e-310, 2e-310, 0.0])
+    treated = np.array([True, True, False])
+    out = _calibrate(prob, treated, np.ones(3), 0.0)
+    assert (out == 0).all()
+
+
+def test_a_subnormal_mean_still_hits_the_target():
+    """A subnormal mean has lost precision, so the factor can't come from it."""
+    prob = np.array([5e-324, 1e-323])
+    out = _calibrate(prob, np.ones(2, dtype=bool), np.ones(2), 1e-16)
+    # abs=0, since pytest.approx's default absolute tolerance would swamp 1e-16.
+    assert out.mean() == pytest.approx(1e-16, rel=1e-11, abs=0)
+
+
+def test_tiny_weights_keep_the_mean_on_target():
+    """Each p * w underflows here, so the search rescales the weights first."""
+    prob = np.array([1e-30, 2e-30])
+    out = _calibrate(prob, np.ones(2, dtype=bool), np.full(2, 1e-300), 1e-30)
+    assert out == pytest.approx([2e-30 / 3, 4e-30 / 3], rel=1e-9, abs=0)
+
+
+def test_a_positive_probability_with_a_tiny_weight_counts():
+    """The weighted share of nonzero probabilities underflows to 0 here, yet one exists."""
+    prob = np.array([0.0, 0.5])
+    out = _calibrate(prob, np.ones(2, dtype=bool), np.array([1e300, 1e-300]), 0.0)
+    assert (out == 0).all()

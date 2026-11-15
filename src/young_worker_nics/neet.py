@@ -131,9 +131,9 @@ def annualise_pay(weekly_pay: np.ndarray, weeks_in_year: float) -> np.ndarray:
     return np.where(weekly_pay >= 0, weekly_pay * weeks_in_year, np.nan)
 
 
-#: Bisection steps for the calibration factor's logarithm. Each step halves the
-#: bracket, which spans at most about 750, so it closes to adjacent floats in
-#: about 65 steps.
+#: Bisection steps for the calibration factor's logarithm. The bracket spans at
+#: most about 1,500, and 200 halvings would narrow it below 1e-57; the search
+#: stops sooner, once its ends are adjacent floats.
 _CALIBRATION_STEPS = 200
 #: Slack for rounding when the target equals the most any factor can reach.
 _SHARE_TOLERANCE = 1e-12
@@ -150,22 +150,26 @@ def _calibrate(
     Each treated person gets ``min(f * p, 1)`` for the one factor ``f`` that
     makes the weighted mean over treated people equal ``target_share``;
     everyone else gets 0. When no scaled probability reaches 1, ``f`` is the
-    plain ratio ``target_share / mean(p)`` and the result equals scaling and
-    clipping. When some do reach 1, clipping them alone would leave the mean
+    plain ratio ``target_share / mean(p)``; if that mean and the weighted sum
+    behind it are normal floats, the result equals scaling and clipping bit for
+    bit. When some do reach 1, clipping them alone would leave the mean
     short of the target, so ``f`` grows until the people below 1 make up the
     difference. The weighted mean of ``min(f * p, 1)`` rises continuously in
     ``f``, so bisection finds it. The bisection runs over ``log f``: the
     bracket can span hundreds of orders of magnitude, and when some
     probabilities are subnormal, ``f`` itself can exceed the largest float.
+    The search divides the weights by their largest value, which leaves every
+    weighted mean unchanged and keeps tiny weights from underflowing.
 
     Raises:
         ValueError: If a treated probability lies outside [0, 1], a treated
-            weight is negative or non-finite, the treated weights sum to zero,
-            the target lies outside [0, 1], no treated person with a positive
-            weight has a nonzero probability, or the target exceeds the
-            weighted share of treated people with a nonzero probability (the
-            most any factor reaches). The last one means the imputation
-            returned too few nonzero values, as 0/1 class labels do.
+            weight is negative or non-finite, the treated weights sum to zero
+            or past the largest float, the target lies outside [0, 1], no
+            treated person with a positive weight has a nonzero probability,
+            or the target exceeds the weighted share of treated people with a
+            nonzero probability (the most any factor reaches). The last one
+            means the imputation returned too few nonzero values, as 0/1 class
+            labels do.
     """
     treated_mask = np.asarray(treated_mask, dtype=bool)
     prob = np.where(treated_mask, np.asarray(prob, dtype=float), 0.0)
@@ -173,12 +177,17 @@ def _calibrate(
     w = np.asarray(person_weights, dtype=float)[treated_mask]
     if not (np.isfinite(p).all() and (p >= 0).all() and (p <= 1).all()):
         raise ValueError("Imputed probabilities must lie in [0, 1] for treated people.")
-    if not (np.isfinite(w).all() and (w >= 0).all() and w.sum() > 0):
-        raise ValueError("Treated person weights must be finite, non-negative and not all zero.")
+    with np.errstate(over="ignore"):
+        total_weight = w.sum()
+    if not (np.isfinite(w).all() and (w >= 0).all() and 0 < total_weight < np.inf):
+        raise ValueError(
+            "Treated person weights must be finite and non-negative, with a total "
+            "above zero and below the largest float."
+        )
     if not 0.0 <= target_share <= 1.0:
         raise ValueError(f"The target share must lie in [0, 1], not {target_share}.")
-    reachable = _weighted_mean((p > 0).astype(float), w)
-    if reachable <= 0:
+    positive = p > 0
+    if not (w[positive] > 0).any():
         raise ValueError(
             "Imputed probabilities are zero across the treated population; "
             "cannot calibrate to the measured entrant share."
@@ -195,13 +204,14 @@ def _calibrate(
         if factor * p.max() <= 1.0:
             return prob * factor
 
+    unit_w = w / w.max()
+    reachable = _weighted_mean(positive.astype(float), unit_w)
     if target_share > reachable + _SHARE_TOLERANCE:
         raise ValueError(
             f"No scaling of the imputed probabilities reaches the target share "
             f"{target_share:.6f}: only {reachable:.6f} of the treated weight has a "
             "nonzero probability. 0/1 class labels in place of probabilities do this."
         )
-    positive = p > 0
     log_p = np.full(p.shape, -np.inf)
     log_p[positive] = np.log(p[positive])
 
@@ -223,7 +233,7 @@ def _calibrate(
         middle = 0.5 * (low + high)
         if middle <= low or middle >= high:
             break
-        if _weighted_mean(scaled(middle), w) < target_share:
+        if _weighted_mean(scaled(middle), unit_w) < target_share:
             low = middle
         else:
             high = middle

@@ -50,7 +50,7 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             "Build BOTH baseline and reform simulations through the "
             "policyengine.py wrapper on the Microcosm UK dataset (via "
-            "managed_microsimulation with allow_unmanaged=True), instead of "
+            "managed_microsimulation), instead of "
             "the enhanced-FRS direct path. Provides employment_sector, so the "
             "public/private employer split is produced. Mutually exclusive "
             "with --dataset."
