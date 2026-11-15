@@ -160,8 +160,8 @@ def _calibrate(
     bracket can span hundreds of orders of magnitude, and when some
     probabilities are subnormal, ``f`` itself can exceed the largest float.
     The search divides the weights by their largest value. That changes no
-    weighted mean beyond rounding and keeps products of small weights and
-    probabilities from underflowing.
+    weighted mean beyond rounding and, when all the weights are small, keeps
+    their products with the probabilities from underflowing.
 
     Raises:
         ValueError: If a treated probability lies outside [0, 1], a treated

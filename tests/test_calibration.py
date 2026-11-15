@@ -311,3 +311,25 @@ def test_a_subnormal_weighted_sum_still_hits_the_target():
     """The mean 1e-307 is normal, but the sum p * w = 1e-320 behind it has lost precision."""
     out = _calibrate(np.array([1e-307]), np.ones(1, dtype=bool), np.array([1e-13]), 1e-300)
     assert out == pytest.approx([1e-300], rel=1e-9, abs=0)
+
+
+def test_a_subnormal_mean_with_a_large_weighted_sum_still_hits_the_target():
+    """Large weights keep the sum far above the normal range, but the mean 7.4e-324 rounds to 1e-323."""
+    prob = np.array([5e-324, 1e-323])
+    out = _calibrate(prob, np.ones(2, dtype=bool), np.full(2, 1e300), 1e-300)
+    assert out == pytest.approx([1e-300 / 1.5, 2e-300 / 1.5], rel=1e-9, abs=0)
+
+
+def test_a_weighted_sum_under_n_normal_floats_still_hits_the_target():
+    """Each 0.5 * w here rounds off half the smallest subnormal, about 1e-13 of its value.
+
+    The sum, 1.01 times the smallest normal float, is normal, but 1,000 such
+    losses would put the published formula about 1e-13 off the target.
+    """
+    tiny = np.finfo(float).tiny
+    smallest = 2.0**-1074
+    # An odd multiple of the smallest subnormal, so halving it must round.
+    k = int(2 * tiny / 1000 / smallest * 1.01) | 1
+    prob = np.full(1000, 0.5)
+    out = _calibrate(prob, np.ones(1000, dtype=bool), np.full(1000, k * smallest), 0.5)
+    assert out == pytest.approx(prob, rel=1e-14, abs=0)
