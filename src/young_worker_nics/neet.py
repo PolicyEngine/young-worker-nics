@@ -132,7 +132,7 @@ def annualise_pay(weekly_pay: np.ndarray, weeks_in_year: float) -> np.ndarray:
 
 
 #: Bisection steps for the calibration factor's logarithm. The bracket spans at
-#: most about 1,500, and 200 halvings would narrow it below 1e-57; the search
+#: most about 1,500, so 200 halvings narrow it below 1e-57. The search usually
 #: stops sooner, once its ends are adjacent floats.
 _CALIBRATION_STEPS = 200
 #: Slack for rounding when the target equals the most any factor can reach.
@@ -150,16 +150,18 @@ def _calibrate(
     Each treated person gets ``min(f * p, 1)`` for the one factor ``f`` that
     makes the weighted mean over treated people equal ``target_share``;
     everyone else gets 0. When no scaled probability reaches 1, ``f`` is the
-    plain ratio ``target_share / mean(p)``; if that mean and the weighted sum
-    behind it are normal floats, the result equals scaling and clipping bit for
+    plain ratio ``target_share / mean(p)``. If that mean is a normal float and
+    the weighted sum behind it is at least the smallest normal float times the
+    number of treated people, the result equals scaling and clipping bit for
     bit. When some do reach 1, clipping them alone would leave the mean
     short of the target, so ``f`` grows until the people below 1 make up the
     difference. The weighted mean of ``min(f * p, 1)`` rises continuously in
     ``f``, so bisection finds it. The bisection runs over ``log f``: the
     bracket can span hundreds of orders of magnitude, and when some
     probabilities are subnormal, ``f`` itself can exceed the largest float.
-    The search divides the weights by their largest value, which leaves every
-    weighted mean unchanged and keeps tiny weights from underflowing.
+    The search divides the weights by their largest value. That changes no
+    weighted mean beyond rounding and keeps products of small weights and
+    probabilities from underflowing.
 
     Raises:
         ValueError: If a treated probability lies outside [0, 1], a treated
@@ -195,11 +197,13 @@ def _calibrate(
     if target_share == 0.0:
         return prob * 0.0
     uncalibrated = _weighted_mean(p, w)
-    # A subnormal weighted mean, or a subnormal weighted sum behind it, has
-    # lost precision, so the factor comes straight from the mean only when
-    # both are normal floats.
+    # Each subnormal product in the weighted sum can lose up to 2**-1075, so
+    # the factor comes straight from the mean only when the mean is a normal
+    # float and the sum is at least n normal floats' worth, which bounds the
+    # relative error near 2**-53.
     weighted_total = float(MicroSeries(p, weights=w).sum())
-    if min(uncalibrated, weighted_total) >= np.finfo(float).tiny:
+    tiny = np.finfo(float).tiny
+    if uncalibrated >= tiny and weighted_total >= p.size * tiny:
         factor = target_share / uncalibrated
         if factor * p.max() <= 1.0:
             return prob * factor

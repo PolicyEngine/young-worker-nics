@@ -559,7 +559,7 @@ def run(args: argparse.Namespace) -> None:
     # nets out of the consolidated public finances. The dashboard's "exclude
     # public-sector employers" toggle reads the *_excl_public figures, which
     # restrict every treated quantity to non-public employees. Needs the
-    # employment_sector variable (only available on the --dataset path).
+    # employment_sector variable (available on the --dataset and --populace paths).
     is_public = None
     if args.dataset is not None or getattr(args, "populace", False):
         try:

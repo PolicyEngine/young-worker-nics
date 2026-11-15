@@ -11,10 +11,10 @@ Invariants, for every input the function accepts:
 5. Rescaling every weight by one constant leaves the output unchanged.
 6. Calibrating an already-calibrated vector returns it.
 7. A higher target never lowers anyone's output.
-8. Differential: where no scaled probability reaches 1 and the weighted
-   mean and the weighted sum behind it are normal floats, the output equals
-   the published scale-then-clip formula bit for bit, so a run the clip
-   never touched reproduces exactly.
+8. Where no scaled probability reaches 1, the weighted mean is a normal
+   float and the weighted sum is at least n normal floats' worth, the output
+   matches the published scale-then-clip formula bit for bit, so a run the
+   clip never touched reproduces exactly.
 
 Invariants 5-7 hold exactly in real arithmetic. In floats, when nearly all of
 the target comes from people at the cap, the factor rests on the few below it,
@@ -230,6 +230,7 @@ def test_downward_calibration_matches_scaling():
     ("prob", "weights", "target", "message"),
     [
         ([0.0, 0.0], [1.0, 1.0], 0.1, "zero across"),
+        ([0.5, 0.0], [0.0, 1.0], 0.1, "zero across"),
         ([0.5, 1.5], [1.0, 1.0], 0.1, r"\[0, 1\]"),
         ([0.5, np.nan], [1.0, 1.0], 0.1, r"\[0, 1\]"),
         ([0.5, 0.5], [1.0, -1.0], 0.1, "weights"),
@@ -304,3 +305,9 @@ def test_a_positive_probability_with_a_tiny_weight_counts():
     prob = np.array([0.0, 0.5])
     out = _calibrate(prob, np.ones(2, dtype=bool), np.array([1e300, 1e-300]), 0.0)
     assert (out == 0).all()
+
+
+def test_a_subnormal_weighted_sum_still_hits_the_target():
+    """The mean 1e-307 is normal, but the sum p * w = 1e-320 behind it has lost precision."""
+    out = _calibrate(np.array([1e-307]), np.ones(1, dtype=bool), np.array([1e-13]), 1e-300)
+    assert out == pytest.approx([1e-300], rel=1e-9, abs=0)
