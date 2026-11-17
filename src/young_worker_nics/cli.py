@@ -45,11 +45,12 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
-        "--populace",
+        "--microcosm",
+        "--populace",  # compat: populace alias, remove after 0.2.0
         action="store_true",
         help=(
             "Build BOTH baseline and reform simulations through the "
-            "policyengine.py wrapper on the Populace UK dataset (via "
+            "policyengine.py wrapper on the Microcosm UK dataset (via "
             "managed_microsimulation with allow_unmanaged=True), instead of "
             "the enhanced-FRS direct path. Provides employment_sector, so the "
             "public/private employer split is produced. Mutually exclusive "
@@ -57,10 +58,11 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
-        "--populace-year",
+        "--microcosm-year",
+        "--populace-year",  # compat: populace alias, remove after 0.2.0
         type=int,
         default=2023,
-        help="Populace UK dataset vintage to load when --populace is set (default 2023).",
+        help="Microcosm UK dataset vintage to load when --microcosm is set (default 2023).",
     )
     parser.add_argument(
         "--pass-through",
@@ -104,8 +106,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    if args.populace and args.dataset:
-        raise SystemExit("--populace and --dataset are mutually exclusive.")
+    if args.microcosm and args.dataset:
+        raise SystemExit("--microcosm and --dataset are mutually exclusive.")
     run(args)
     return 0
 

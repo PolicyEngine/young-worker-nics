@@ -112,7 +112,7 @@ record the version; `pyproject.toml` explains the pin):
 
 ```bash
 uv pip install -e ".[simulation,lfs,dev]"
-python -m young_worker_nics --year 2027 --populace --lfs-path data/lfs/*.tab
+python -m young_worker_nics --year 2027 --microcosm --lfs-path data/lfs/*.tab
 ```
 
 ## Dashboard
