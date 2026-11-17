@@ -281,11 +281,22 @@ def _freeze_baseline(baseline, year: int) -> _FrozenBaseline:
 
 def run(args: argparse.Namespace) -> None:
     """Run the pipeline end-to-end and write the dashboard JSON."""
+    # Callers that build their own Namespace may still set the old field names.
+    use_microcosm = bool(
+        getattr(args, "microcosm", False)
+        or getattr(args, "populace", False)  # compat: populace alias, remove after 0.2.0
+    )
+    microcosm_year = getattr(
+        args,
+        "microcosm_year",
+        getattr(args, "populace_year", 2023),  # compat: populace alias, remove after 0.2.0
+    )
+
     # ── Step 1: Load PolicyEngine baseline ──────────────────────────────────
 
     print("Step 1: Loading PolicyEngine baseline ...")
     microcosm_source = None  # logical dataset name recorded in the results JSON
-    if getattr(args, "microcosm", False):
+    if use_microcosm:
         # Microcosm UK dataset, simulated THROUGH the policyengine.py wrapper.
         # policyengine.py registers the Microcosm UK release as a managed
         # dataset (logical name "populace_uk_<year>"), so we hand that name
@@ -296,7 +307,6 @@ def run(args: argparse.Namespace) -> None:
         # all work unchanged.
         from policyengine.tax_benefit_models.uk import managed_microsimulation
 
-        microcosm_year = getattr(args, "microcosm_year", 2023)
         microcosm_source = f"populace_uk_{microcosm_year}"
         print(
             f"    Microcosm UK {microcosm_year} via policyengine.py "
@@ -403,7 +413,7 @@ def run(args: argparse.Namespace) -> None:
     # across managed simulations. This builds a second full Microsimulation
     # purely to validate (it is not dashboard output), so on the memory-bound
     # --microcosm path (1.16M-person dataset) it is skipped.
-    if getattr(args, "microcosm", False):
+    if use_microcosm:
         print(
             "    skipping Reform-object cross-check on --microcosm (memory; not dashboard output)"
         )
@@ -563,7 +573,7 @@ def run(args: argparse.Namespace) -> None:
     # restrict every treated quantity to non-public employees. Needs the
     # employment_sector variable (only available on the --dataset path).
     is_public = None
-    if args.dataset is not None or getattr(args, "microcosm", False):
+    if args.dataset is not None or use_microcosm:
         try:
             is_public = baseline.calculate("employment_sector", YEAR) == "PUBLIC"
         except Exception as exc:  # variable absent in an older dataset
@@ -700,7 +710,7 @@ def run(args: argparse.Namespace) -> None:
     # remaining back-half work — labour-demand arithmetic and JSON assembly —
     # needs no further baseline.calculate, and without --lfs-path the targeted
     # branches that would are skipped.)
-    if getattr(args, "microcosm", False):
+    if use_microcosm:
         baseline = _freeze_baseline(baseline, YEAR)
         gc.collect()
         print("    baseline frozen to a snapshot; full simulation released (memory)")
@@ -1127,14 +1137,12 @@ def run(args: argparse.Namespace) -> None:
             "policyengine": importlib.metadata.version("policyengine"),
             "policyengine_uk": importlib.metadata.version("policyengine-uk"),
             "dataset": (
-                microcosm_source
-                if getattr(args, "microcosm", False)
-                else (str(args.dataset) if args.dataset else None)
+                microcosm_source if use_microcosm else (str(args.dataset) if args.dataset else None)
             ),
-            "dataset_source": ("populace-uk" if getattr(args, "microcosm", False) else None),
+            "dataset_source": ("populace-uk" if use_microcosm else None),
             "simulation_stack": (
                 "policyengine.py (managed_microsimulation)"
-                if getattr(args, "microcosm", False)
+                if use_microcosm
                 else ("policyengine-uk (direct)" if args.dataset else "policyengine.py (bundle)")
             ),
         },
